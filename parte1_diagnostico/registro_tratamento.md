@@ -1,0 +1,23 @@
+# Registro de tratamento de dados — `propostas_credito.csv`
+
+Base bruta: 6.400 linhas, 19 colunas. Base tratada: **6.400 linhas** (nenhuma linha descartada).
+
+Princípio seguido: cada decisão de limpeza é uma decisão de negócio disfarçada, e descartar
+linha muda o resultado. Por isso, salvo evidência forte de que um valor está errado E
+substituível com segurança, a preferência foi **manter a linha e isolar o problema na
+coluna afetada**, não jogar fora a proposta inteira.
+
+| # | Problema encontrado | Escopo | O que foi feito | Por quê |
+|---|---|---|---|---|
+| 1 | `valor_imovel` com prefixo `"R$ "` colado ao número, fazendo a coluna inteira ser lida como texto | 3 linhas (ex: PR-000705) | Removido o prefixo, convertido para float | Mesmo valor numérico, só ruído de formatação na extração. Sem ambiguidade. |
+| 2 | `data_entrada` em formato `dd/mm/yyyy` em vez de `yyyy-mm-dd` | 3 linhas (ex: PR-000151) | Normalizado para ISO `yyyy-mm-dd` | Mesma data, formato diferente. Sem ambiguidade sobre o valor. |
+| 3 | `canal_origem` com variantes de capitalização (`mídia paga`, `indicação`, `organico`) coexistindo com as categorias já padronizadas (`Mídia paga`, `Indicação`, `Organico`) | 4 linhas | Normalizado para a categoria já existente | Mesma categoria de canal — deixar como estava inflaria artificialmente a contagem de "categorias únicas" e distorceria a análise por canal (pergunta 2 da Parte 1, justamente sobre o canal de correspondentes). |
+| 4 | `etapa_max_funil = 7`, mas o funil de negócio só vai de 1 a 6 (regra explícita do enunciado) | 1 linha (PR-000081) | Corrigido para 6 | Investigada a linha completa: `status_final = Contratada`, `data_assinatura_contrato` e `taxa_juros_aa` preenchidas — padrão idêntico às outras 1.241 linhas contratadas. Erro de digitação (6→7) com evidência forte, não um valor ambíguo. |
+| 5 | `idade_cliente = 14` — implausível para proponente de crédito | 1 linha (PR-000079) | Linha **mantida**, `idade_cliente` marcada como nula/inválida; excluída apenas de análises que usam idade (segmentação etária, correlação idade × contratação) | Diferente do item 4: aqui não há evidência de qual seria o valor real (poderia ser 41, 44, 24 — troca de dígito não é óbvia). Resto da linha é plausível e útil para outras análises (canal, LTV, funil, status). Imputar um valor "plausível" (ex: mediana) seria inventar dado — mesmo princípio da Parte 3, onde um extrator que chuta é pior que um que assume que não sabe. Descartar a linha inteira jogaria fora 5 de 6 dimensões válidas por causa de 1 problema isolado. Impacto no agregado é desprezível (1 em 6.400 = 0,016%). |
+| 6 | Coluna `ltv` presente no **dicionário de dados** mas ausente no CSV bruto | Toda a base | Calculada como `ltv = valor_solicitado / valor_imovel`, exatamente como o dicionário define | Não é uma decisão de limpeza — é computar uma coluna derivada que a própria especificação da base já previa. Necessária para checar a regra de negócio de LTV máximo 60%. |
+| 7 | `taxa_juros_aa` e `data_assinatura_contrato` nulas em 80,61% das linhas | 5.159 linhas | **Mantido como nulo, não tratado como erro** | Nulo é 100% consistente com `status_final != 'Contratada'`: só quem contratou tem taxa e data de assinatura. É estrutural ao negócio, não sujeira. Tratar como erro (ex: imputar) destruiria um sinal real do funil. |
+| — | `id_proposta` duplicado, linhas 100% duplicadas, nulos em outras colunas, valores negativos/zero, `score_credito` fora de faixa plausível (0–1000) | — | Nenhum encontrado | Checado e descartado como não-problema. Registrado aqui para deixar explícito que foi verificado, não ignorado. |
+
+## Decisões pendentes / assumidas sem confirmação externa
+- Assumido que a política de LTV máximo 60% se aplica a `valor_solicitado / valor_imovel` (avaliação do imóvel), não a algum outro valor de referência (ex: valor de mercado vs. valor de avaliação) — o dicionário não distingue os dois, então tratamos como a mesma coisa.
+- Assumido que `etapa_max_funil` representa a etapa mais avançada que a proposta atingiu, então propostas com `status_final` de reprovação/desistência em etapas intermediárias são leituras válidas do funil (não erros).

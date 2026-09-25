@@ -1,0 +1,252 @@
+======================================================================
+SHAPE
+======================================================================
+(6400, 21)
+
+======================================================================
+DTYPES (como o pandas leu, sem forçar nada)
+======================================================================
+id_proposta                     str
+data_entrada                    str
+canal_origem                    str
+cidade                          str
+uf                              str
+tipo_imovel                     str
+valor_imovel                    str
+valor_solicitado                str
+prazo_meses                   int64
+score_credito                 int64
+idade_cliente                 int64
+renda_mensal_declarada      float64
+flag_cliente_recorrente       int64
+consultor_id                    str
+etapa_max_funil               int64
+status_final                    str
+tempo_analise_dias            int64
+data_assinatura_contrato        str
+taxa_juros_aa               float64
+valor_imovel_num            float64
+valor_solicitado_num        float64
+dtype: object
+
+======================================================================
+NULOS por coluna (contagem e %)
+======================================================================
+                          nulos    pct
+data_assinatura_contrato   5159  80.61
+taxa_juros_aa              5159  80.61
+canal_origem                  0   0.00
+data_entrada                  0   0.00
+id_proposta                   0   0.00
+uf                            0   0.00
+cidade                        0   0.00
+tipo_imovel                   0   0.00
+valor_imovel                  0   0.00
+score_credito                 0   0.00
+idade_cliente                 0   0.00
+valor_solicitado              0   0.00
+prazo_meses                   0   0.00
+flag_cliente_recorrente       0   0.00
+renda_mensal_declarada        0   0.00
+consultor_id                  0   0.00
+etapa_max_funil               0   0.00
+tempo_analise_dias            0   0.00
+status_final                  0   0.00
+valor_imovel_num              0   0.00
+valor_solicitado_num          0   0.00
+
+======================================================================
+DUPLICATAS
+======================================================================
+id_proposta duplicado: 0
+linhas 100% duplicadas: 0
+
+======================================================================
+id_proposta — formato e continuidade
+======================================================================
+0    PR-000001
+1    PR-000002
+2    PR-000003
+3    PR-000004
+4    PR-000005
+Name: id_proposta, dtype: str
+valores únicos: 6400 de 6400
+
+======================================================================
+canal_origem — valores únicos
+======================================================================
+canal_origem
+Correspondente    1772
+Organico          1410
+Mídia paga        1270
+Indicação          979
+Parceria           965
+mídia paga           2
+indicação            1
+organico             1
+Name: count, dtype: int64
+
+======================================================================
+tipo_imovel — valores únicos
+======================================================================
+tipo_imovel
+Apartamento       2745
+Casa              2077
+Sala comercial     795
+Terreno            535
+Imóvel rural       248
+Name: count, dtype: int64
+
+======================================================================
+status_final — valores únicos
+======================================================================
+status_final
+Sem retorno              1639
+Desistiu                 1492
+Contratada               1241
+Reprovada crédito         920
+Problema garantia         668
+Documentação pendente     440
+Name: count, dtype: int64
+
+======================================================================
+etapa_max_funil — valores únicos
+======================================================================
+etapa_max_funil
+1     273
+2     984
+3    1799
+4    1267
+5     836
+6    1240
+7       1
+Name: count, dtype: int64
+
+======================================================================
+uf — valores únicos
+======================================================================
+uf
+SP    1648
+PE     564
+RJ     558
+RS     540
+GO     522
+DF     521
+BA     521
+PR     516
+SC     507
+MG     503
+Name: count, dtype: int64
+
+======================================================================
+flag_cliente_recorrente — valores únicos
+======================================================================
+flag_cliente_recorrente
+0    5174
+1    1226
+Name: count, dtype: int64
+
+======================================================================
+Estatísticas descritivas — colunas numéricas
+======================================================================
+       valor_imovel_num  valor_solicitado_num  prazo_meses  score_credito  idade_cliente  renda_mensal_declarada  tempo_analise_dias  taxa_juros_aa
+count      6.400000e+03          6.400000e+03  6400.000000    6400.000000    6400.000000             6400.000000         6400.000000    1241.000000
+mean       7.827587e+05          3.842436e+05   135.292500     669.482500      40.762188             5956.628406           31.720938       1.324690
+std        3.918849e+05          2.146627e+05    64.954936      75.697298       9.775061             3361.903848           11.919218       0.137502
+min        1.199542e+05          4.570769e+04    60.000000     360.000000      14.000000             1800.000000            2.000000       0.940000
+25%        5.080359e+05          2.363282e+05    84.000000     618.000000      34.000000             3630.487500           24.000000       1.230000
+50%        6.994977e+05          3.372378e+05   120.000000     669.000000      41.000000             5206.990000           31.000000       1.320000
+75%        9.692418e+05          4.781129e+05   180.000000     721.000000      47.000000             7400.557500           40.000000       1.420000
+max        3.741993e+06          2.280018e+06   240.000000     990.000000      76.000000            35231.290000           78.000000       1.730000
+
+======================================================================
+data_entrada — range e formato
+======================================================================
+min: 07/12/2024 | max: 2025-12-29
+amostra: ['2024-07-12', '2025-07-18', '2025-02-03']
+
+======================================================================
+data_assinatura_contrato — range e formato (só quando status = Contratada?)
+======================================================================
+preenchido: 1241
+status_final quando data_assinatura preenchida:
+status_final
+Contratada    1241
+Name: count, dtype: int64
+
+status_final == 'Contratada' mas SEM data de assinatura:
+0
+
+======================================================================
+Checagem: valor_solicitado > valor_imovel (LTV > 100%)
+======================================================================
+LTV > 1.0: 0
+LTV > 0.60 (acima do máximo de política): 981
+LTV describe:
+count    6400.000000
+mean        0.491007
+std         0.104941
+min         0.230000
+25%         0.419164
+50%         0.492283
+75%         0.562637
+max         0.790000
+dtype: float64
+
+======================================================================
+Valores negativos ou zero em colunas que não deveriam ter
+======================================================================
+
+======================================================================
+idade_cliente — outliers plausíveis
+======================================================================
+78      14
+6336    21
+54      21
+4750    21
+4720    21
+Name: idade_cliente, dtype: int64
+2909    75
+4623    76
+3958    76
+6065    76
+3025    76
+Name: idade_cliente, dtype: int64
+
+======================================================================
+score_credito — range plausível (bureaus BR geralmente 0-1000)
+======================================================================
+360 990
+
+======================================================================
+cidade/uf — inconsistência (cidade não bate com uf?)
+======================================================================
+cidade
+Belo Horizonte    1
+Brasília          1
+Campinas          1
+Curitiba          1
+Florianópolis     1
+Goiânia           1
+Porto Alegre      1
+Recife            1
+Rio de Janeiro    1
+Salvador          1
+Name: uf, dtype: int64
+
+======================================================================
+consultor_id — valores únicos
+======================================================================
+qtd consultores: 30
+consultor_id
+CONS-003    246
+CONS-022    246
+CONS-016    244
+CONS-002    236
+CONS-029    233
+CONS-024    228
+CONS-014    226
+CONS-011    221
+CONS-028    221
+CONS-027    220
+Name: count, dtype: int64
