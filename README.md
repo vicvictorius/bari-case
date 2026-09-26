@@ -14,9 +14,9 @@ A análise do funil encontrou uma conversão geral de **19,39%**.
 
 Os principais achados foram:
 
-- **Análise de crédito (etapa 3)** concentra **35,1% do valor perdido**, aproximadamente **R$ 703 milhões**.
-- Considerando as perdas do funil por motivo, **60,8% do valor perdido** está associado a desistência ou falta de retorno do cliente, e não diretamente à reprovação de crédito.
-- A conversão caiu de **20,4% para 18,7%** no período analisado. A queda existe nos dados, mas é moderada e não foi submetida a teste de significância estatística.
+- **Análise de crédito (etapa 3)** concentra **35,1% do valor solicitado não contratado**, aproximadamente **R$ 703 milhões**.
+- Considerando as perdas do funil por motivo, **60,8% do valor solicitado não contratado** está associado a desistência ou falta de retorno do cliente, e não diretamente à reprovação de crédito.
+- A conversão observada passou de **20,4% em 2024 para 18,7% nas coortes maduras de Jan–Out/2025**. A deterioração existe nos dados analisados, mas não foi submetida a teste de significância estatística e não deve ser interpretada isoladamente como evidência de uma queda estrutural permanente.
 - O canal **Correspondente** apresentou conversão de **14,3%**, contra aproximadamente **20–22%** nos demais canais, enquanto aumentou sua participação no volume.
 - **Score de crédito** apresentou a maior associação observada com contratação, com amplitude de **30,4 pontos percentuais** entre grupos analisados, seguido por LTV e canal de origem.
 
@@ -35,6 +35,8 @@ Em um cenário de sensibilidade no qual uma intervenção de processo recuperass
 O canal apresentou conversão inferior aos demais e participação crescente no volume.
 
 Em um cenário no qual sua conversão alcançasse a média observada nos outros canais, a oportunidade associada seria de aproximadamente **126 propostas e R$ 48 milhões** em crédito adicional.
+
+Essa estimativa é um cenário contrafactual descritivo e não demonstra que o canal seja a causa da diferença observada.
 
 **3. Validar e operacionalizar a política de LTV de 60%**
 
@@ -178,25 +180,27 @@ Uma preocupação durante essa etapa foi evitar que a limpeza dos dados alterass
 
 Por isso, foram feitas comparações entre métricas antes e depois do tratamento.
 
+Também foi considerada a maturidade temporal das coortes. Propostas recentes podem ainda estar percorrendo o funil, portanto coortes imaturas não devem ser comparadas diretamente com períodos que já tiveram tempo suficiente para atingir um desfecho.
+
 ---
 
 # Parte 2 — Automação do relatório semanal
 
 A Parte 2 transforma a análise em um processo automatizado.
 
-O pipeline recebe o CSV, valida sua estrutura, aplica o tratamento compartilhado e gera um relatório HTML do funil.
+O pipeline recebe o CSV bruto, valida sua estrutura, aplica o mesmo tratamento compartilhado utilizado no diagnóstico e gera um relatório HTML semanal do funil.
 
 ```text
-CSV
- ↓
+CSV bruto
+    ↓
 validação
- ↓
-tratamento
- ↓
+    ↓
+tratamento compartilhado
+    ↓
 cálculo das métricas
- ↓
+    ↓
 relatório HTML
- ↓
+    ↓
 log da execução
 ```
 
@@ -209,8 +213,81 @@ A automação possui tratamento explícito para situações como:
 - CSV vazio;
 - mudanças de schema;
 - semana sem propostas;
+- possível base desatualizada;
 - falhas durante a geração do relatório;
 - reexecução do pipeline.
+
+## Semântica temporal
+
+O relatório utiliza coortes definidas pela `data_entrada`, considerando semanas completas de segunda-feira a domingo.
+
+A leitura é **retrospectiva**: os desfechos apresentados são os disponíveis no arquivo utilizado na execução, inclusive quando ocorreram depois da semana selecionada.
+
+Portanto, o relatório **não representa o status que era conhecido historicamente naquela semana nem a quantidade de contratos assinados durante aquela semana**.
+
+Essa distinção é necessária porque a base não contém um histórico completo de mudanças de status que permita reconstruir exatamente o estado de cada proposta em uma data passada.
+
+O acumulado considera propostas com entrada até o domingo da semana selecionada.
+
+## Relatório e filtros
+
+A interface permite filtrar a semana selecionada por:
+
+- canal de origem;
+- última etapa alcançada.
+
+Para reduzir ambiguidade, o relatório diferencia explicitamente:
+
+- **Semana selecionada — responde aos filtros**
+- **Semana completa — sem filtros**
+
+Os filtros atualizam os indicadores correspondentes à semana selecionada. Semana anterior, acumulado e demais análises mantêm seu contexto original.
+
+As combinações utilizadas pelos filtros são pré-calculadas em Python e disponibilizadas ao relatório. O JavaScript é responsável pela atualização da interface, evitando manter uma segunda implementação independente das regras analíticas no navegador.
+
+## Estados vazios e alertas
+
+O relatório diferencia ausência de observações de uma taxa igual a zero.
+
+Quando não existem propostas para o recorte analisado, por exemplo, a conversão é apresentada como:
+
+```text
+Não aplicável
+```
+
+em vez de `0,00%`.
+
+Também existem:
+
+- **notas metodológicas permanentes**, que explicam como interpretar o relatório;
+- **alertas dinâmicos**, exibidos quando uma condição específica pode afetar a interpretação, como ausência de propostas na semana ou possível desatualização da base.
+
+Os alertas são apresentados sem duplicar as notas metodológicas.
+
+## Interface final
+
+O redesign final do relatório melhorou:
+
+- hierarquia visual;
+- organização dos filtros;
+- leitura dos KPIs;
+- comparação entre períodos;
+- visualização das perdas;
+- alertas;
+- estados vazios;
+- responsividade;
+- impressão/PDF.
+
+As mudanças de interface foram realizadas sem alterar:
+
+- cálculos;
+- métricas;
+- regras de negócio;
+- tratamento compartilhado;
+- semântica temporal;
+- comportamento funcional dos filtros.
+
+O relatório permanece autocontido e não depende de frameworks ou CDNs externos para sua apresentação.
 
 Um exemplo de saída está disponível em:
 
@@ -257,6 +334,8 @@ O `trecho_bruto` preserva evidência textual do documento para permitir auditori
 
 Foi construído um **gabarito de referência** para os 17 laudos.
 
+O rascunho inicial do gabarito teve apoio de IA e foi posteriormente revisado manualmente por uma pessoa. Portanto, ele é utilizado como referência para o experimento, mas não deve ser interpretado como um *gold standard* humano totalmente independente.
+
 O avaliador compara cada campo extraído com esse gabarito e normaliza representações equivalentes de números e datas antes de classificá-las como divergências.
 
 Essa abordagem permite separar dois problemas diferentes:
@@ -274,7 +353,7 @@ Resultado:
 
 ```text
 17/17 laudos processados
-92,4% de acurácia geral de status
+92,4% de acurácia de status
 ```
 
 O modelo menor foi escolhido inicialmente devido à limitação de hardware disponível, uma NVIDIA GT 1030 com 2 GB de VRAM.
@@ -291,8 +370,10 @@ Resultado:
 
 ```text
 17/17 laudos processados
-92,9% de acurácia geral de status
+92,9% de acurácia de status
 ```
+
+A métrica de 92,9% corresponde a **158 classificações de status corretas em 170 comparações**.
 
 A diferença para o Qwen3 1.7B foi de apenas **0,5 ponto percentual** na métrica agregada de status.
 
@@ -301,11 +382,11 @@ A avaliação por campo mostrou, entretanto, diferenças importantes.
 No Qwen2.5 7B, por exemplo:
 
 ```text
-area_privativa_m2        70,6%
-endereco                100,0%
-valor_avaliacao_reais   100,0%
-matricula               100,0%
-responsavel_tecnico     100,0%
+area_privativa_m2         70,6%
+endereco                 100,0%
+valor_avaliacao_reais    100,0%
+matricula                100,0%
+responsavel_tecnico      100,0%
 ```
 
 Esses valores correspondem à **acurácia de status** desses campos no conjunto avaliado.
@@ -347,10 +428,10 @@ O projeto possui testes automatizados para as Partes 2 e 3.
 Na execução final:
 
 ```text
-Parte 2: 35 testes aprovados
+Parte 2: 37 testes aprovados
 Parte 3: 32 testes aprovados
 
-Total: 67 testes aprovados
+Total: 69 testes aprovados
 ```
 
 A suíte completa foi executada com:
@@ -362,7 +443,7 @@ python -m pytest -v
 e terminou com:
 
 ```text
-67 passed
+69 passed
 ```
 
 Os testes cobrem, entre outros pontos:
@@ -374,6 +455,11 @@ Os testes cobrem, entre outros pontos:
 - geração segura do HTML;
 - reexecução da automação;
 - preservação da saída anterior em caso de falha;
+- estados vazios;
+- filtros do relatório;
+- notas metodológicas;
+- alertas dinâmicos;
+- prevenção de duplicação de avisos;
 - normalização de números e datas;
 - avaliação das extrações;
 - validação Pydantic;
@@ -498,7 +584,10 @@ Algumas limitações foram mantidas explicitamente na entrega:
 
 - as estimativas financeiras dependem de premissas e representam oportunidades, não previsões;
 - a queda observada de conversão não foi submetida a teste de significância estatística;
+- coortes recentes podem estar imaturas, exigindo cautela em comparações temporais;
 - associação entre características e contratação não implica causalidade;
+- o relatório semanal utiliza uma leitura retrospectiva por `data_entrada` e não reconstrói o status historicamente conhecido em cada semana;
+- a base não contém histórico completo de mudanças de status;
 - a avaliação de IA utiliza apenas 17 laudos;
 - o rascunho inicial do gabarito da Parte 3 teve apoio de IA e foi posteriormente revisado manualmente por uma única pessoa, não constituindo um *gold standard* humano totalmente independente;
 - determinados campos apresentaram erros recorrentes nos modelos locais;
@@ -529,7 +618,8 @@ Alguns erros encontrados durante o desenvolvimento levaram a mudanças concretas
 - correção da validação entre `status` e `valor` na extração estruturada;
 - melhoria da normalização utilizada pelo avaliador;
 - criação de testes de regressão para erros encontrados durante execuções reais;
-- revisão crítica das estimativas e recomendações produzidas na análise do funil.
+- revisão crítica das estimativas e recomendações produzidas na análise do funil;
+- revisão da interface do relatório sem alteração das métricas ou regras de negócio.
 
 O uso de IA, os erros encontrados, os aprendizados e a autocrítica estão registrados em:
 
