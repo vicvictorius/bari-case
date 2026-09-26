@@ -5,6 +5,8 @@ Critério de acerto (ver decisoes.md para a justificativa completa):
       conflitante da mesma forma que o gabarito?
     - Acerto de VALOR: quando ambos (gabarito e extração) dizem "presente",
       o valor extraído bate com o valor do gabarito após normalização?
+    - EQUIVALÊNCIA TEXTUAL: métrica complementar aplicada somente a campos
+      textuais selecionados. Ela não substitui a métrica conservadora.
 
 Uso:
     python avaliador.py \
@@ -18,10 +20,16 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import unicodedata
 from datetime import datetime
 from pathlib import Path
 
 from schema import CAMPOS_LAUDO
+
+CAMPOS_TEXTO_NORMALIZAVEIS = {
+    "endereco",
+    "matricula",
+}
 
 
 def _tentar_parse_numero(texto: str) -> float | None:
@@ -75,6 +83,9 @@ def _tentar_parse_data(texto: str) -> str | None:
     """Interpreta formatos de data encontrados nos laudos.
 
     Retorna sempre no formato ISO AAAA-MM-DD.
+
+    Timezone não se aplica aqui porque os valores representam datas civis
+    do documento, e não instantes temporais.
     """
     texto = texto.strip()
 
@@ -84,7 +95,7 @@ def _tentar_parse_data(texto: str) -> str | None:
         "%d-%m-%Y",
     ):
         try:
-            return datetime.strptime(
+            return datetime.strptime(  # noqa: DTZ007
                 texto,
                 formato,
             ).strftime("%Y-%m-%d")
@@ -140,7 +151,7 @@ def _limpar_wrapper_modelo(texto: str) -> str:
 
 
 def normalizar_valor(valor: str | None) -> str | None:
-    """Normaliza um valor para comparação.
+    """Normaliza um valor para a comparação conservadora principal.
 
     Datas e números são comparados pelo significado, não pela representação
     textual.
@@ -183,6 +194,66 @@ def normalizar_valor(valor: str | None) -> str | None:
     )
 
 
+def normalizar_texto_comparacao(valor: str | None) -> str | None:
+    """Normaliza texto para uma métrica complementar de equivalência.
+
+    Essa função é deliberadamente separada de normalizar_valor(). Assim,
+    a métrica histórica/conservadora continua intacta.
+
+    A normalização busca remover diferenças superficiais de representação,
+    como acentuação, pontuação, separadores e alguns conectores.
+
+    Ela é utilizada apenas nos campos definidos em
+    CAMPOS_TEXTO_NORMALIZAVEIS.
+    """
+    if valor is None:
+        return None
+
+    texto = str(valor).strip().lower()
+
+    # Remove acentuação sem alterar letras/números.
+    texto = unicodedata.normalize("NFKD", texto)
+    texto = "".join(
+        caractere
+        for caractere in texto
+        if not unicodedata.combining(caractere)
+    )
+
+    # Remove wrappers simples observados em saídas de modelos.
+    texto = re.sub(
+        r"^(?:strconv|value|name|id)\s*[:=]?\s*",
+        "",
+        texto,
+    )
+
+    # Remove caracteres artificiais nas extremidades.
+    texto = re.sub(
+        r"^[^\w\d]+|[^\w\d]+$",
+        "",
+        texto,
+    )
+
+    # Conectores simples não determinam equivalência de representação.
+    texto = re.sub(
+        r"\b(?:do|da|de)\b",
+        " ",
+        texto,
+    )
+
+    # Pontuação e separadores são transformados em espaços.
+    texto = re.sub(
+        r"[^a-z0-9]+",
+        " ",
+        texto,
+    )
+
+    return re.sub(
+        r"\s+",
+        " ",
+        texto,
+    ).strip()
+
+
 def carregar(caminho: Path) -> dict[str, dict]:
     """Carrega um JSON de registros e indexa por arquivo_origem."""
     registros = json.loads(
@@ -204,18 +275,24 @@ def avaliar(
     Arquivos presentes no gabarito mas ausentes na extração contam como erro
     em todos os campos. Isso impede que falhas de cobertura sejam
     silenciosamente ignoradas.
+
+    A métrica textual normalizada é complementar e não substitui a métrica
+    conservadora de valor.
     """
     por_campo = {
         campo: {
             "status_ok": 0,
             "valor_ok": 0,
             "valor_aplicavel": 0,
+            "texto_normalizado_ok": 0,
+            "texto_normalizado_aplicavel": 0,
             "total": 0,
         }
         for campo in CAMPOS_LAUDO
     }
 
     divergencias: list[dict] = []
+    equivalencias_textuais: list[dict] = []
     arquivos_faltando_na_extracao: list[str] = []
 
     for arquivo, registro_gabarito in gabarito.items():
@@ -276,7 +353,11 @@ def avaliar(
                     esperado["valor"]
                 )
 
-                if valor_obtido == valor_esperado:
+                valor_exato_ok = (
+                    valor_obtido == valor_esperado
+                )
+
+                if valor_exato_ok:
                     por_campo[campo]["valor_ok"] += 1
 
                 else:
@@ -289,6 +370,43 @@ def avaliar(
                             "obtido": obtido.get("valor"),
                         }
                     )
+
+                if campo in CAMPOS_TEXTO_NORMALIZAVEIS:
+                    por_campo[campo][
+                        "texto_normalizado_aplicavel"
+                    ] += 1
+
+                    texto_esperado = normalizar_texto_comparacao(
+                        esperado["valor"]
+                    )
+
+                    texto_obtido = normalizar_texto_comparacao(
+                        obtido.get("valor")
+                    )
+
+                    texto_normalizado_ok = (
+                        texto_esperado == texto_obtido
+                    )
+
+                    if texto_normalizado_ok:
+                        por_campo[campo][
+                            "texto_normalizado_ok"
+                        ] += 1
+
+                        # Registra apenas os casos em que a comparação
+                        # conservadora falhou, mas a normalizada considerou
+                        # os textos equivalentes. Isso facilita auditoria.
+                        if not valor_exato_ok:
+                            equivalencias_textuais.append(
+                                {
+                                    "arquivo": arquivo,
+                                    "campo": campo,
+                                    "esperado": esperado["valor"],
+                                    "obtido": obtido.get("valor"),
+                                    "esperado_normalizado": texto_esperado,
+                                    "obtido_normalizado": texto_obtido,
+                                }
+                            )
 
     resumo = {}
 
@@ -304,6 +422,15 @@ def avaliar(
         else:
             acuracia_valor = None
 
+        if contagens["texto_normalizado_aplicavel"] > 0:
+            acuracia_texto_normalizado = round(
+                contagens["texto_normalizado_ok"]
+                / contagens["texto_normalizado_aplicavel"],
+                3,
+            )
+        else:
+            acuracia_texto_normalizado = None
+
         resumo[campo] = {
             "acuracia_status": (
                 round(
@@ -314,6 +441,15 @@ def avaliar(
                 else None
             ),
             "acuracia_valor_quando_presente": acuracia_valor,
+            "acuracia_texto_normalizado":
+                acuracia_texto_normalizado,
+            "valor_ok": contagens["valor_ok"],
+            "valor_aplicavel":
+                contagens["valor_aplicavel"],
+            "texto_normalizado_ok":
+                contagens["texto_normalizado_ok"],
+            "texto_normalizado_aplicavel":
+                contagens["texto_normalizado_aplicavel"],
             "n": total,
         }
 
@@ -343,12 +479,31 @@ def avaliar(
         for contagens in por_campo.values()
     )
 
-    # Acurácia de valor mede o que importa para quem consome o dado:
-    # dos campos que o gabarito diz "presente" e o modelo também, quantos
-    # vieram com o valor certo. Status certo com valor errado não conta.
+    # Acurácia de valor mede:
+    # dos campos que o gabarito diz "presente" e o modelo também,
+    # quantos vieram com o valor correto pela comparação conservadora.
     acuracia_valor_geral = (
         valores_corretos / valores_aplicaveis
         if valores_aplicaveis > 0
+        else None
+    )
+
+    textos_normalizados_aplicaveis = sum(
+        contagens["texto_normalizado_aplicavel"]
+        for campo, contagens in por_campo.items()
+        if campo in CAMPOS_TEXTO_NORMALIZAVEIS
+    )
+
+    textos_normalizados_corretos = sum(
+        contagens["texto_normalizado_ok"]
+        for campo, contagens in por_campo.items()
+        if campo in CAMPOS_TEXTO_NORMALIZAVEIS
+    )
+
+    acuracia_texto_normalizado_geral = (
+        textos_normalizados_corretos
+        / textos_normalizados_aplicaveis
+        if textos_normalizados_aplicaveis > 0
         else None
     )
 
@@ -364,8 +519,18 @@ def avaliar(
         ),
         "valores_corretos": valores_corretos,
         "valores_aplicaveis": valores_aplicaveis,
+        "acuracia_texto_normalizado_geral": (
+            round(acuracia_texto_normalizado_geral, 3)
+            if acuracia_texto_normalizado_geral is not None
+            else None
+        ),
+        "textos_normalizados_corretos":
+            textos_normalizados_corretos,
+        "textos_normalizados_aplicaveis":
+            textos_normalizados_aplicaveis,
         "por_campo": resumo,
         "divergencias": divergencias,
+        "equivalencias_textuais": equivalencias_textuais,
         "arquivos_faltando_na_extracao":
             arquivos_faltando_na_extracao,
         "total_laudos_gabarito": len(gabarito),
@@ -397,9 +562,29 @@ def gerar_relatorio_md(resultado: dict) -> str:
         ),
         "",
         (
-            "As duas métricas medem coisas diferentes: status certo não "
-            "garante valor certo. Para uso do dado, a acurácia de valor é "
-            "a mais relevante."
+            "A métrica de valor acima permanece como comparação "
+            "conservadora principal."
+        ),
+        "",
+        (
+            "A equivalência textual normalizada é uma métrica "
+            "complementar aplicada apenas a `endereco` e `matricula`. "
+            "Ela remove diferenças superficiais de representação e "
+            "não substitui a métrica principal."
+        ),
+        "",
+        (
+            "Equivalência textual normalizada geral "
+            "(`endereco` + `matricula`): "
+            + (
+                f"**{resultado['acuracia_texto_normalizado_geral']:.1%}** "
+                f"({resultado['textos_normalizados_corretos']}/"
+                f"{resultado['textos_normalizados_aplicaveis']})"
+                if resultado[
+                    "acuracia_texto_normalizado_geral"
+                ] is not None
+                else "n/a"
+            )
         ),
         "",
         (
@@ -413,9 +598,10 @@ def gerar_relatorio_md(resultado: dict) -> str:
         "",
         (
             "| Campo | Acurácia de status | "
-            "Acurácia de valor (quando presente) | n |"
+            "Acurácia de valor (quando presente) | "
+            "Equivalência textual normalizada | n |"
         ),
-        "|---|---|---|---|",
+        "|---|---|---|---|---|",
     ]
 
     for campo, metricas in resultado["por_campo"].items():
@@ -433,10 +619,17 @@ def gerar_relatorio_md(resultado: dict) -> str:
             else "n/a"
         )
 
+        acuracia_texto = (
+            f"{metricas['acuracia_texto_normalizado']:.1%}"
+            if metricas["acuracia_texto_normalizado"] is not None
+            else "—"
+        )
+
         linhas.append(
             f"| {campo} | "
             f"{acuracia_status} | "
             f"{acuracia_valor} | "
+            f"{acuracia_texto} | "
             f"{metricas['n']} |"
         )
 
@@ -444,8 +637,10 @@ def gerar_relatorio_md(resultado: dict) -> str:
         linhas.extend(
             [
                 "",
-                "## Laudos ausentes na extração "
-                "(falha do pipeline)",
+                (
+                    "## Laudos ausentes na extração "
+                    "(falha do pipeline)"
+                ),
                 "",
             ]
         )
@@ -458,12 +653,43 @@ def gerar_relatorio_md(resultado: dict) -> str:
             ]
         )
 
+    if resultado["equivalencias_textuais"]:
+        linhas.extend(
+            [
+                "",
+                "## Equivalências recuperadas pela normalização textual",
+                "",
+                (
+                    "Os casos abaixo falharam na comparação conservadora, "
+                    "mas foram considerados equivalentes após a "
+                    "normalização textual complementar."
+                ),
+                "",
+                (
+                    "| Arquivo | Campo | Esperado | Obtido | "
+                    "Normalizado |"
+                ),
+                "|---|---|---|---|---|",
+            ]
+        )
+
+        for item in resultado["equivalencias_textuais"]:
+            linhas.append(
+                f"| {item['arquivo']} | "
+                f"{item['campo']} | "
+                f"{item['esperado']} | "
+                f"{item['obtido']} | "
+                f"{item['esperado_normalizado']} |"
+            )
+
     if resultado["divergencias"]:
         linhas.extend(
             [
                 "",
-                "## Divergências "
-                "(auditoria linha a linha)",
+                (
+                    "## Divergências "
+                    "(auditoria linha a linha)"
+                ),
                 "",
                 (
                     "| Arquivo | Campo | Tipo | "
@@ -541,6 +767,13 @@ def main() -> None:
         print(
             "Acurácia geral de valor: "
             f"{resultado['acuracia_valor_geral']:.1%}"
+        )
+
+    if resultado["acuracia_texto_normalizado_geral"] is not None:
+        print(
+            "Equivalência textual normalizada "
+            "(endereco + matricula): "
+            f"{resultado['acuracia_texto_normalizado_geral']:.1%}"
         )
 
     print(

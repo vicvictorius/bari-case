@@ -60,18 +60,38 @@ Regras obrigatórias:
 1. Quando status for "ausente" ou "conflitante", o campo "trecho_bruto" é \
 OBRIGATÓRIO e deve ser uma cópia literal do trecho do laudo que justifica \
 essa classificação (não parafraseie).
+
 2. Quando status for "presente", "valor" deve ser a informação normalizada: \
 áreas e valores em R$ como número puro (ex: 1275000.00, 78.4), ano como \
 inteiro de 4 dígitos (ex: 2014) e datas em formato ISO AAAA-MM-DD. Nada de \
 texto, unidade ou prefixo junto do número.
+
 3. NUNCA "chute" um valor plausível para um campo ausente ou conflitante. \
 Um extrator que erra "sabendo que não sabe" é melhor que um que inventa. \
 Se você não tem certeza, use "ausente" ou "conflitante" -- nunca invente.
+
 4. Valores por extenso (ex: "seiscentos e oitenta mil reais") devem ser \
 convertidos para número quando não houver ambiguidade.
+
 5. Quando status for "ausente" ou "conflitante", deixe "valor" como null. \
 Para campos numéricos e datas, qualquer valor enviado nesses casos é \
 descartado; a evidência vai em "trecho_bruto".
+
+6. Para os campos de área, diferencie a área da edificação da área do terreno:
+   - "area_privativa_m2" representa a área privativa, construída, edificada, \
+coberta ou de benfeitorias do imóvel, quando explicitamente informada.
+   - "area_total_m2" representa a área total associada ao imóvel, especialmente \
+a área do terreno ou lote.
+   - Quando o laudo informar separadamente área construída, edificada, coberta \
+ou de benfeitorias e área do terreno ou lote, use a área da edificação em \
+"area_privativa_m2" e a área do terreno ou lote em "area_total_m2".
+   - Não use a área construída, edificada, coberta ou de benfeitorias como \
+"area_total_m2" quando uma área de terreno ou lote estiver explicitamente \
+informada.
+
+7. Todas as áreas devem ser retornadas em metros quadrados. Quando o laudo \
+informar explicitamente uma área em outra unidade de superfície e a conversão \
+for inequívoca, converta para m². Para hectares, use 1 ha = 10.000 m².
 """
 
 

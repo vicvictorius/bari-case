@@ -13,6 +13,10 @@ Os testes de normalização também cobrem artefatos reais observados durante
 o benchmark com qwen2.5:7b-instruct. O objetivo é permitir diferenças
 puramente representacionais sem tornar o avaliador permissivo a ponto de
 esconder erros semânticos reais.
+
+A normalização textual complementar cobre especificamente diferenças de
+representação nos campos `endereco` e `matricula`, preservando casos em que
+há perda real de informação.
 """
 
 import json
@@ -23,7 +27,11 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from avaliador import avaliar, carregar, normalizar_valor  # noqa: E402
+from avaliador import (
+    avaliar,
+    normalizar_texto_comparacao,
+    normalizar_valor,
+)
 
 
 @pytest.mark.parametrize(
@@ -78,6 +86,66 @@ def test_normalizar_valor_trata_formatacao_equivalente_como_igual(a, b):
 )
 def test_normalizar_valor_preserva_diferencas_reais(a, b):
     assert normalizar_valor(a) != normalizar_valor(b)
+
+
+def test_normalizacao_textual_ignora_separador_uf():
+    """Separadores diferentes de cidade/UF não mudam o endereço."""
+    esperado = normalizar_texto_comparacao(
+        "Rua Monte Verde, 19, Curitiba/PR"
+    )
+    obtido = normalizar_texto_comparacao(
+        "Rua Monte Verde, 19, Curitiba-PR"
+    )
+
+    assert esperado == obtido
+
+
+def test_normalizacao_textual_ignora_pontuacao_matricula():
+    """Pontuação e conectores não devem alterar a matrícula."""
+    esperado = normalizar_texto_comparacao(
+        "145.230 (7º RGI)"
+    )
+    obtido = normalizar_texto_comparacao(
+        "145.230 do 7º RGI"
+    )
+
+    assert esperado == obtido
+
+
+def test_normalizacao_textual_remove_wrapper_artificial():
+    """Wrapper produzido pelo modelo não deve alterar o conteúdo."""
+    esperado = normalizar_texto_comparacao(
+        "9.876 (2º RGI do Recife)"
+    )
+    obtido = normalizar_texto_comparacao(
+        "value: 9.876, 2º RGI do Recife"
+    )
+
+    assert esperado == obtido
+
+
+def test_normalizacao_textual_nao_esconde_informacao_ausente():
+    """Perda de complemento do endereço deve continuar sendo erro."""
+    esperado = normalizar_texto_comparacao(
+        "Sala 503, Edifício Horizonte, Rua do Comércio, 77, Curitiba/PR"
+    )
+    obtido = normalizar_texto_comparacao(
+        "Rua do Comércio, 77, Curitiba/PR"
+    )
+
+    assert esperado != obtido
+
+
+def test_normalizacao_textual_nao_ignora_cartorio_ausente():
+    """Perda dos dados do registro não pode virar equivalência."""
+    esperado = normalizar_texto_comparacao(
+        "66.504 (Registro de Imóveis da 4ª Zona)"
+    )
+    obtido = normalizar_texto_comparacao(
+        "66.504"
+    )
+
+    assert esperado != obtido
 
 
 def test_extracao_identica_ao_gabarito_da_100_por_cento():
@@ -183,16 +251,39 @@ def test_acuracia_de_valor_geral_separa_status_certo_de_valor_certo():
     """Status certo com valor errado não pode contar como acerto de valor."""
     gabarito = {
         "l.txt": {
-            campo: {"valor": "10", "status": "presente", "trecho_bruto": None}
-            for campo in ["tipo_imovel", "endereco", "area_privativa_m2", "area_total_m2",
-                          "ano_construcao", "valor_avaliacao_reais", "matricula", "onus",
-                          "data_vistoria", "responsavel_tecnico"]
+            campo: {
+                "valor": "10",
+                "status": "presente",
+                "trecho_bruto": None,
+            }
+            for campo in [
+                "tipo_imovel",
+                "endereco",
+                "area_privativa_m2",
+                "area_total_m2",
+                "ano_construcao",
+                "valor_avaliacao_reais",
+                "matricula",
+                "onus",
+                "data_vistoria",
+                "responsavel_tecnico",
+            ]
         }
     }
-    extracao = {"l.txt": {c: dict(v) for c, v in gabarito["l.txt"].items()}}
+
+    extracao = {
+        "l.txt": {
+            campo: dict(valor)
+            for campo, valor in gabarito["l.txt"].items()
+        }
+    }
+
     extracao["l.txt"]["area_total_m2"]["valor"] = "99"
 
-    resultado = avaliar(extracao, gabarito)
+    resultado = avaliar(
+        extracao,
+        gabarito,
+    )
 
     assert resultado["acuracia_status_geral"] == 1.0
     assert resultado["valores_corretos"] == 9
