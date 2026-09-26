@@ -10,7 +10,7 @@ privativa, área total, ano de construção, valor de avaliação, matrícula,
 | Arquivo | O que faz |
 |---|---|
 | `schema.py` | Contrato de dados (Pydantic): cada campo possui `valor`, `status` (`presente`, `ausente` ou `conflitante`) e `trecho_bruto` de evidência. Áreas e valor são `float`, ano é `int` e data é `date` |
-| `normalizacao.py` | Parser estrito que converte texto em número, ano ou data e rejeita qualquer texto em volta |
+| `normalizacao.py` | Parsers estritos de número, ano e data; limpeza de símbolos nas extremidades dos campos textuais e rejeição de prefixos artificiais |
 | `extrator.py` | Pipeline alternativo via API da Anthropic, com saída estruturada, validação e nova tentativa quando a resposta é inválida |
 | `extrator_local.py` | Pipeline utilizado na execução real da entrega, via modelos locais com Ollama |
 | `construir_gabarito.py` | Contém o gabarito de referência revisado e gera `gabarito.json` validando os registros pelo schema oficial |
@@ -24,6 +24,7 @@ privativa, área total, ano de construção, valor de avaliação, matrícula,
 | `testes/test_extrator_local.py` | Testes do extrator local com cliente Ollama simulado |
 | `testes/test_schema.py` | Testes das regras de validação do schema, incluindo regressão de erro encontrado durante a execução real |
 | `testes/test_schema_tipado.py` | Testes do parser e dos campos tipados, usando as saídas reais que antes passavam pela validação |
+| `testes/test_schema_textual.py` | Regressões das saídas textuais, preservação da evidência e validação integral do gabarito sem alterar seus textos |
 | `decisoes.md` | Registro das decisões de modelagem, experimentos, limitações e trade-offs |
 
 ## Como rodar
@@ -81,7 +82,9 @@ python -m pytest testes/ -v
 ```
 
 Os testes não exigem Ollama nem acesso à API da Anthropic, pois utilizam
-clientes simulados e dados sintéticos quando necessário.
+clientes simulados e dados sintéticos quando necessário. Após a inclusão da
+validação textual, passaram **107 testes da Parte 3** e **144 testes na suíte
+completa**.
 
 ## Pipeline alternativo — Anthropic
 
@@ -202,6 +205,21 @@ mas não a correção do conteúdo extraído.
 
 Os experimentos também mostraram um trade-off entre **tamanho do modelo,
 qualidade da extração, tempo de execução e hardware disponível**.
+
+## Validação dos campos textuais
+
+O schema limpa espaços externos e os marcadores `:`, `>`, `-` e `]->` nas
+extremidades de `valor`, preservando pontuação interna e `trecho_bruto`.
+Prefixos `strconv`, `value:`, `name:`, `id_` e `The ` no início são rejeitados
+sem diferenciar maiúsculas de minúsculas, acionando o retry existente.
+
+Essa regra trata padrões conhecidos, mas não garante correção semântica.
+O prefixo `The ` também pode ocorrer em nomes legítimos e é uma limitação
+explícita da regra. Consulte [`decisoes.md`](decisoes.md#validação-dos-campos-textuais-na-saída).
+
+O efeito no modelo real **ainda exige nova execução**. Os resultados
+históricos do V2 não incluem essa validação; suas saídas e relatórios foram
+preservados, assim como as métricas do avaliador.
 
 ## Limitações
 

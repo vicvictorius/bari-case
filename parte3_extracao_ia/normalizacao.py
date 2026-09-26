@@ -130,3 +130,28 @@ def parse_data(valor: object) -> date:
     raise ValueError(
         f"{valor!r} não é uma data válida. Use o formato AAAA-MM-DD."
     )
+
+_PREFIXO_ARTIFICIAL = re.compile(
+    r"^(?:strconv\b|(?:value|name)\s*:|id_|the\s+)", re.IGNORECASE
+)
+_SIMBOLOS_INICIAIS = re.compile(r"^(?:(?:\]->|[:>\-])\s*)+")
+_SIMBOLOS_FINAIS = re.compile(r"(?:\s*(?:\]->|[:>\-]))+$")
+
+
+def normalizar_texto(valor: str) -> str:
+    """Limpa símbolos de borda conhecidos e rejeita prefixos artificiais.
+
+    Remove espaços externos e os marcadores `:`, `>`, `-` e `]->` nas
+    extremidades. Preserva a pontuação interna, parênteses e colchetes do
+    conteúdo; não tenta reconstruir texto ou completar informação ausente.
+    Os prefixos são rejeitados sem diferenciar maiúsculas de minúsculas.
+    """
+    texto = valor.strip()
+    texto = _SIMBOLOS_INICIAIS.sub("", texto)
+    texto = _SIMBOLOS_FINAIS.sub("", texto).strip()
+    if _PREFIXO_ARTIFICIAL.match(texto):
+        raise ValueError(
+            f"{valor!r} contém prefixo artificial. Devolva somente o texto "
+            "do campo, sem strconv, value:, name:, id_ ou The no início."
+        )
+    return texto

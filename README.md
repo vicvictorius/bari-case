@@ -436,6 +436,8 @@ Aplicando o schema tipado à saída histórica do Qwen2.5 7B, **13 dos 17 laudos
 
 O schema tipado foi reexecutado contra o modelo, primeiro com o prompt anterior e depois com o prompt V2. Ambas as execuções processaram **16/17 laudos**, com acurácia de valor condicional de **77,3% (99/128)** e **80,9% (114/141)**, respectivamente. A tipagem garante o formato dos campos, mas não dispensa a avaliação do conteúdo nem a revisão humana.
 
+Os campos textuais agora também passam por validação: símbolos conhecidos nas extremidades são removidos e prefixos artificiais são rejeitados para acionar o retry. O efeito no modelo real depende de uma nova execução; os resultados históricos abaixo ainda não medem essa validação. As regras e limitações estão em [`decisoes.md`](parte3_extracao_ia/decisoes.md#validação-dos-campos-textuais-na-saída).
+
 Os relatórios versionados estão em:
 
 - [Schema antigo](parte3_extracao_ia/relatorio_acuracia_qwen25-7b.md)
@@ -463,21 +465,21 @@ Na execução final:
 
 ```text
 Parte 2: 37 testes aprovados
-Parte 3: 79 testes aprovados
+Parte 3: 107 testes aprovados
 
-Total: 116 testes aprovados
+Total: 144 testes aprovados
 ```
 
 A suíte completa foi executada com:
 
 ```bash
-python -m pytest -v
+python -m pytest -q -p no:cacheprovider
 ```
 
 e terminou com:
 
 ```text
-116 passed
+144 passed
 ```
 
 Os testes cobrem, entre outros pontos:
@@ -498,6 +500,7 @@ Os testes cobrem, entre outros pontos:
 - avaliação das extrações;
 - validação Pydantic;
 - conversão estrita de números, anos e datas no schema tipado;
+- limpeza de símbolos nas extremidades dos campos textuais, rejeição de prefixos artificiais e preservação dos valores textuais do gabarito;
 - rejeição das saídas com texto em volta observadas na execução real;
 - parsing das respostas do modelo;
 - retry de respostas inválidas;

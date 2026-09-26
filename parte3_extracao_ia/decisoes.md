@@ -1280,9 +1280,9 @@ Essa observação ainda exige avaliação em laudos novos para verificar a
 generalização.
 
 Os próximos gargalos observados estão principalmente nos campos textuais,
-como `matricula` e `endereco`, nos quais diferenças de representação reduzem
-a métrica de exact match mesmo quando parte ou toda a informação semântica
-está preservada.
+como `matricula` e `endereco`. As divergências incluem variações de
+representação, defeitos de saída e perda de informação; esses casos são
+distinguidos na análise complementar e na validação textual descritas abaixo.
 
 ## Avaliação complementar de campos textuais
 
@@ -1298,8 +1298,13 @@ Exemplos incluem:
 
 - `Curitiba/PR` versus `Curitiba-PR`;
 - `145.230 (7º RGI)` versus `145.230 do 7º RGI`;
-- presença de wrappers artificiais produzidos pelo modelo;
 - diferenças de pontuação e separadores.
+
+Também foram encontrados defeitos de saída, como `strconv:45.981`,
+`value: 9.876, 2º RGI do Recife` e `The 201.443`. Esses prefixos artificiais
+não são variações legítimas de representação. A normalização complementar
+pode removê-los para comparar valores, mas não corrige o JSON entregue ao
+consumidor nem comprova que a saída original esteja adequada para uso.
 
 Por esse motivo, foi adicionada ao avaliador uma métrica complementar e
 determinística de equivalência textual.
@@ -1343,8 +1348,11 @@ campos aplicáveis à comparação de valor, enquanto a segunda considera soment
 
 ### Auditoria das equivalências
 
-A normalização recuperou 14 casos que falhavam na comparação conservadora por
-diferenças de representação.
+A normalização recuperou 14 casos que falhavam na comparação conservadora.
+Esse conjunto inclui tanto variações de representação quanto defeitos de
+saída removidos pela normalização, como símbolos soltos e prefixos artificiais.
+Portanto, os casos recuperados não devem ser descritos apenas como diferenças
+superficiais de formato.
 
 Casos com perda real de informação continuaram sendo tratados como
 divergências.
@@ -1365,7 +1373,8 @@ Foram mantidas duas perspectivas de avaliação:
 1. comparação conservadora, utilizada como métrica principal e comparável aos
    benchmarks anteriores;
 2. equivalência textual normalizada, utilizada como métrica complementar para
-   analisar diferenças de representação em campos textuais.
+   analisar equivalências após normalização, incluindo variações de
+   representação e remoção de defeitos de saída conhecidos.
 
 Não foram introduzidos fuzzy matching, distância de Levenshtein, embeddings ou
 LLM-as-a-judge. Para o conjunto atual de 17 laudos, a abordagem determinística
@@ -1385,3 +1394,48 @@ Assim, a avaliação final passa a separar quatro dimensões:
 2. acurácia de status;
 3. acurácia condicional de valor;
 4. equivalência textual complementar.
+
+## Validação dos campos textuais na saída
+
+Os campos textuais de `CampoExtraido` passam a usar a função pura
+`normalizar_texto`, em `normalizacao.py`, durante a validação do schema.
+A regra se aplica a `valor`; `trecho_bruto` permanece intacto para auditoria.
+
+- Espaços externos e os marcadores `:`, `>`, `-` e `]->` nas extremidades
+  são removidos. A limpeza é limitada a esses marcadores conhecidos;
+  pontuação interna, parênteses e colchetes do conteúdo são preservados.
+- Prefixos `strconv`, `value:`, `name:`, `id_` e `The ` no início são
+  rejeitados, sem diferenciar maiúsculas e minúsculas, inclusive após a
+  limpeza dos símbolos. A rejeição gera erro de validação e aciona o retry
+  já existente, em vez de adivinhar o conteúdo após o prefixo.
+- Um valor que fica vazio após a limpeza continua proibido quando o status
+  é `presente`. As regras dos campos numéricos e de data são preservadas.
+
+Exemplos observados no V2:
+
+| Saída original | Tratamento no schema |
+|---|---|
+| `: 184.772 do 14º CRI de São Paulo` | `184.772 do 14º CRI de São Paulo` |
+| `]-> 70.008` | `70.008` |
+| `strconv:45.981` | Rejeição e retry |
+| `The 201.443` | Rejeição e retry |
+| `value: 9.876, 2º RGI do Recife` | Rejeição e retry |
+
+Essa validação cobre padrões conhecidos de defeito de saída, sem garantir
+correção semântica de qualquer texto. A regra de `The `, em particular, pode
+rejeitar um nome legítimo que comece assim; é uma restrição explícita desta
+validação, que deve ser reavaliada com novos documentos.
+
+Os testes cobrem os exemplos acima, textos legítimos (inclusive endereço
+iniciado por número), preservação da evidência, validação do gabarito inteiro
+sem alterar seus valores textuais e retry com cliente simulado.
+
+Validação desta alteração: **107 testes da Parte 3** e **144 testes na suíte
+completa** passaram. A validação foi executada com `python -m pytest
+parte3_extracao_ia/testes -q -p no:cacheprovider` e `python -m pytest -q
+-p no:cacheprovider`, respectivamente.
+
+O efeito sobre a acurácia e a cobertura do modelo real **só será conhecido
+com uma nova execução**. Os relatórios e JSONs históricos foram preservados;
+seus resultados não medem esta nova validação textual. A métrica conservadora
+e a métrica complementar do avaliador não foram alteradas.
