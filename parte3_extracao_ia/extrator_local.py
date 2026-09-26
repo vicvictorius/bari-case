@@ -30,7 +30,7 @@ import ollama
 from pydantic import ValidationError
 
 from extrator import PROMPT_SISTEMA
-from schema import CAMPOS_LAUDO, LaudoExtraido
+from schema import CAMPOS_LAUDO, LaudoExtraido, json_schema_campos
 
 logger = logging.getLogger("extrator_laudos_local")
 
@@ -44,25 +44,9 @@ def montar_json_schema() -> dict:
     Mesma fonte de verdade (schema.py) -- só muda o formato de declaração
     exigido pelo cliente do Ollama.
     """
-    campo_schema = {
-        "type": "object",
-        "properties": {
-            "valor": {"type": ["string", "null"]},
-            "status": {
-                "type": "string",
-                "enum": ["presente", "ausente", "conflitante"],
-            },
-            "trecho_bruto": {"type": ["string", "null"]},
-        },
-        "required": ["status"],
-    }
-
     return {
         "type": "object",
-        "properties": {
-            campo: campo_schema
-            for campo in CAMPOS_LAUDO
-        },
+        "properties": json_schema_campos(),
         "required": CAMPOS_LAUDO,
     }
 

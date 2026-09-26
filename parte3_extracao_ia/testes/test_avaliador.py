@@ -177,3 +177,24 @@ def test_laudo_faltando_na_extracao_nao_e_ignorado_silenciosamente():
     # 16 dos 17 laudos com todos os campos corretos -> geral cai
     # proporcionalmente.
     assert resultado["acuracia_status_geral"] < 1.0
+
+
+def test_acuracia_de_valor_geral_separa_status_certo_de_valor_certo():
+    """Status certo com valor errado não pode contar como acerto de valor."""
+    gabarito = {
+        "l.txt": {
+            campo: {"valor": "10", "status": "presente", "trecho_bruto": None}
+            for campo in ["tipo_imovel", "endereco", "area_privativa_m2", "area_total_m2",
+                          "ano_construcao", "valor_avaliacao_reais", "matricula", "onus",
+                          "data_vistoria", "responsavel_tecnico"]
+        }
+    }
+    extracao = {"l.txt": {c: dict(v) for c, v in gabarito["l.txt"].items()}}
+    extracao["l.txt"]["area_total_m2"]["valor"] = "99"
+
+    resultado = avaliar(extracao, gabarito)
+
+    assert resultado["acuracia_status_geral"] == 1.0
+    assert resultado["valores_corretos"] == 9
+    assert resultado["valores_aplicaveis"] == 10
+    assert resultado["acuracia_valor_geral"] == 0.9

@@ -10,10 +10,13 @@ não tem certeza (ver decisão registrada em parte3_extracao_ia/decisoes.md).
 
 from __future__ import annotations
 
+from datetime import date
 from enum import Enum
-from typing import Optional
+from typing import Any, ClassVar, Optional
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
+
+from normalizacao import parse_ano, parse_data, parse_numero
 
 
 class StatusCampo(str, Enum):
@@ -33,6 +36,9 @@ class CampoExtraido(BaseModel):
     explícita. Nesses casos, `trecho_bruto` é obrigatório porque preserva
     a evidência necessária para auditoria.
     """
+
+    # Tipo JSON declarado ao LLM (tool schema / format do Ollama).
+    TIPO_JSON: ClassVar[dict[str, Any]] = {"type": ["string", "null"]}
 
     valor: Optional[str] = None
     status: StatusCampo
@@ -62,7 +68,10 @@ class CampoExtraido(BaseModel):
         # colocando a informação certa em trecho_bruto por engano. Sem essa
         # checagem esse tipo de saída passava despercebido pela validação
         # (e portanto nunca disparava retry) -- ver decisoes.md.
-        if self.status == StatusCampo.PRESENTE and not self.valor:
+        vazio = self.valor is None or (
+            isinstance(self.valor, str) and not self.valor.strip()
+        )
+        if self.status == StatusCampo.PRESENTE and vazio:
             raise ValueError(
                 'valor é obrigatório quando status="presente" -- se a '
                 "informação está incerta, use ausente ou conflitante em vez "
@@ -71,19 +80,84 @@ class CampoExtraido(BaseModel):
         return self
 
 
+class _CampoTipado(CampoExtraido):
+    """Base dos campos com tipo definido (número, ano, data).
+
+    Duas regras além das de CampoExtraido:
+
+    1. O valor texto é convertido por um parser estrito (normalizacao.py).
+       Se não converter, a validação falha e o extrator faz retry, em vez de
+       deixar passar algo como "Possui 61m²".
+    2. Quando status != presente, o valor é descartado (vira None). Um
+       campo ausente ou conflitante não tem UM valor confiável; a evidência
+       fica em `trecho_bruto`, que continua obrigatório nesses casos.
+    """
+
+    @model_validator(mode="before")
+    @classmethod
+    def descartar_valor_se_nao_presente(cls, dados: Any) -> Any:
+        if isinstance(dados, dict):
+            status = dados.get("status")
+            if status not in (StatusCampo.PRESENTE, StatusCampo.PRESENTE.value):
+                return {**dados, "valor": None}
+        return dados
+
+
+class CampoNumero(_CampoTipado):
+    """Área em m² ou valor em R$: float positivo."""
+
+    TIPO_JSON: ClassVar[dict[str, Any]] = {"type": ["number", "null"]}
+
+    valor: Optional[float] = None
+
+    @field_validator("valor", mode="before")
+    @classmethod
+    def converter(cls, v: Any) -> Optional[float]:
+        return None if v is None else parse_numero(v)
+
+
+class CampoAno(_CampoTipado):
+    """Ano de construção: int entre 1800 e o ano atual."""
+
+    TIPO_JSON: ClassVar[dict[str, Any]] = {"type": ["integer", "null"]}
+
+    valor: Optional[int] = None
+
+    @field_validator("valor", mode="before")
+    @classmethod
+    def converter(cls, v: Any) -> Optional[int]:
+        return None if v is None else parse_ano(v)
+
+
+class CampoData(_CampoTipado):
+    """Data da vistoria: serializada como AAAA-MM-DD."""
+
+    TIPO_JSON: ClassVar[dict[str, Any]] = {
+        "type": ["string", "null"],
+        "description": "Data no formato AAAA-MM-DD.",
+    }
+
+    valor: Optional[date] = None
+
+    @field_validator("valor", mode="before")
+    @classmethod
+    def converter(cls, v: Any) -> Optional[date]:
+        return None if v is None else parse_data(v)
+
+
 class LaudoExtraido(BaseModel):
     """Registro estruturado extraído de um laudo de avaliação em texto livre."""
 
     arquivo_origem: str
     tipo_imovel: CampoExtraido
     endereco: CampoExtraido
-    area_privativa_m2: CampoExtraido
-    area_total_m2: CampoExtraido
-    ano_construcao: CampoExtraido
-    valor_avaliacao_reais: CampoExtraido
+    area_privativa_m2: CampoNumero
+    area_total_m2: CampoNumero
+    ano_construcao: CampoAno
+    valor_avaliacao_reais: CampoNumero
     matricula: CampoExtraido
     onus: CampoExtraido
-    data_vistoria: CampoExtraido
+    data_vistoria: CampoData
     responsavel_tecnico: CampoExtraido
 
     def to_flat_dict(self) -> dict:
@@ -116,3 +190,29 @@ CAMPOS_LAUDO: list[str] = [
     "data_vistoria",
     "responsavel_tecnico",
 ]
+
+
+def json_schema_campos() -> dict[str, dict]:
+    """Schema JSON de cada campo, derivado dos tipos acima.
+
+    Fonte única para o tool schema da API Anthropic (extrator.py) e para o
+    `format` do Ollama (extrator_local.py). Declarar `number`/`integer` aqui
+    restringe a saída do modelo já na geração; a validação Pydantic continua
+    sendo a garantia final.
+    """
+    propriedades: dict[str, dict] = {}
+    for campo in CAMPOS_LAUDO:
+        classe = LaudoExtraido.model_fields[campo].annotation
+        propriedades[campo] = {
+            "type": "object",
+            "properties": {
+                "valor": dict(classe.TIPO_JSON),
+                "status": {
+                    "type": "string",
+                    "enum": [s.value for s in StatusCampo],
+                },
+                "trecho_bruto": {"type": ["string", "null"]},
+            },
+            "required": ["status"],
+        }
+    return propriedades

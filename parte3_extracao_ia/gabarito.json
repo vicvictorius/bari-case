@@ -12,22 +12,22 @@
       "trecho_bruto": null
     },
     "area_privativa_m2": {
-      "valor": "78.40",
+      "valor": 78.4,
       "status": "presente",
       "trecho_bruto": null
     },
     "area_total_m2": {
-      "valor": "102.10",
+      "valor": 102.1,
       "status": "presente",
       "trecho_bruto": null
     },
     "ano_construcao": {
-      "valor": "2014",
+      "valor": 2014,
       "status": "presente",
       "trecho_bruto": null
     },
     "valor_avaliacao_reais": {
-      "valor": "642000.00",
+      "valor": 642000.0,
       "status": "presente",
       "trecho_bruto": null
     },
@@ -65,22 +65,22 @@
       "trecho_bruto": null
     },
     "area_privativa_m2": {
-      "valor": "146.00",
+      "valor": 146.0,
       "status": "presente",
       "trecho_bruto": null
     },
     "area_total_m2": {
-      "valor": "250.00",
+      "valor": 250.0,
       "status": "presente",
       "trecho_bruto": null
     },
     "ano_construcao": {
-      "valor": "2008",
+      "valor": 2008,
       "status": "presente",
       "trecho_bruto": null
     },
     "valor_avaliacao_reais": {
-      "valor": "680000.00",
+      "valor": 680000.0,
       "status": "presente",
       "trecho_bruto": null
     },
@@ -118,7 +118,7 @@
       "trecho_bruto": null
     },
     "area_privativa_m2": {
-      "valor": "54.8",
+      "valor": 54.8,
       "status": "presente",
       "trecho_bruto": null
     },
@@ -133,7 +133,7 @@
       "trecho_bruto": "Idade aparente: 11 anos."
     },
     "valor_avaliacao_reais": {
-      "valor": "395500.00",
+      "valor": 395500.0,
       "status": "presente",
       "trecho_bruto": null
     },
@@ -176,7 +176,7 @@
       "trecho_bruto": "Área do terreno: 360 m2 (não há edificação/área construída mencionada)."
     },
     "area_total_m2": {
-      "valor": "360.00",
+      "valor": 360.0,
       "status": "presente",
       "trecho_bruto": null
     },
@@ -186,7 +186,7 @@
       "trecho_bruto": "Ano: não se aplica"
     },
     "valor_avaliacao_reais": {
-      "valor": "218000.00",
+      "valor": 218000.0,
       "status": "presente",
       "trecho_bruto": null
     },
@@ -224,22 +224,22 @@
       "trecho_bruto": null
     },
     "area_privativa_m2": {
-      "valor": "310.00",
+      "valor": 310.0,
       "status": "presente",
       "trecho_bruto": null
     },
     "area_total_m2": {
-      "valor": "48000.00",
+      "valor": 48000.0,
       "status": "presente",
       "trecho_bruto": null
     },
     "ano_construcao": {
-      "valor": "1999",
+      "valor": 1999,
       "status": "presente",
       "trecho_bruto": null
     },
     "valor_avaliacao_reais": {
-      "valor": "1275000.00",
+      "valor": 1275000.0,
       "status": "presente",
       "trecho_bruto": null
     },
@@ -277,22 +277,22 @@
       "trecho_bruto": null
     },
     "area_privativa_m2": {
-      "valor": "61.00",
+      "valor": 61.0,
       "status": "presente",
       "trecho_bruto": null
     },
     "area_total_m2": {
-      "valor": "84.00",
+      "valor": 84.0,
       "status": "presente",
       "trecho_bruto": null
     },
     "ano_construcao": {
-      "valor": "2018",
+      "valor": 2018,
       "status": "presente",
       "trecho_bruto": null
     },
     "valor_avaliacao_reais": {
-      "valor": "455000.00",
+      "valor": 455000.0,
       "status": "presente",
       "trecho_bruto": null
     },
@@ -330,22 +330,22 @@
       "trecho_bruto": null
     },
     "area_privativa_m2": {
-      "valor": "92.50",
+      "valor": 92.5,
       "status": "presente",
       "trecho_bruto": null
     },
     "area_total_m2": {
-      "valor": "125.00",
+      "valor": 125.0,
       "status": "presente",
       "trecho_bruto": null
     },
     "ano_construcao": {
-      "valor": "2011",
+      "valor": 2011,
       "status": "presente",
       "trecho_bruto": null
     },
     "valor_avaliacao_reais": {
-      "valor": "372000.00",
+      "valor": 372000.0,
       "status": "presente",
       "trecho_bruto": null
     },
@@ -383,7 +383,7 @@
       "trecho_bruto": null
     },
     "area_privativa_m2": {
-      "valor": "118.00",
+      "valor": 118.0,
       "status": "presente",
       "trecho_bruto": null
     },
@@ -398,7 +398,7 @@
       "trecho_bruto": "Ano de referência: 2005"
     },
     "valor_avaliacao_reais": {
-      "valor": "910000.00",
+      "valor": 910000.0,
       "status": "presente",
       "trecho_bruto": null
     },
@@ -436,22 +436,22 @@
       "trecho_bruto": null
     },
     "area_privativa_m2": {
-      "valor": "198.00",
+      "valor": 198.0,
       "status": "presente",
       "trecho_bruto": null
     },
     "area_total_m2": {
-      "valor": "420.00",
+      "valor": 420.0,
       "status": "presente",
       "trecho_bruto": null
     },
     "ano_construcao": {
-      "valor": "2020",
+      "valor": 2020,
       "status": "presente",
       "trecho_bruto": null
     },
     "valor_avaliacao_reais": {
-      "valor": "1080000.00",
+      "valor": 1080000.0,
       "status": "presente",
       "trecho_bruto": null
     },
@@ -489,22 +489,22 @@
       "trecho_bruto": null
     },
     "area_privativa_m2": {
-      "valor": "96.30",
+      "valor": 96.3,
       "status": "presente",
       "trecho_bruto": null
     },
     "area_total_m2": {
-      "valor": "127.60",
+      "valor": 127.6,
       "status": "presente",
       "trecho_bruto": null
     },
     "ano_construcao": {
-      "valor": "2016",
+      "valor": 2016,
       "status": "presente",
       "trecho_bruto": null
     },
     "valor_avaliacao_reais": {
-      "valor": "735000.00",
+      "valor": 735000.0,
       "status": "presente",
       "trecho_bruto": null
     },
@@ -547,7 +547,7 @@
       "trecho_bruto": "Sem edificação; ano de construção: inexistente."
     },
     "area_total_m2": {
-      "valor": "1020.00",
+      "valor": 1020.0,
       "status": "presente",
       "trecho_bruto": null
     },
@@ -557,7 +557,7 @@
       "trecho_bruto": "Sem edificação; ano de construção: inexistente."
     },
     "valor_avaliacao_reais": {
-      "valor": "2450000.00",
+      "valor": 2450000.0,
       "status": "presente",
       "trecho_bruto": null
     },
@@ -595,22 +595,22 @@
       "trecho_bruto": null
     },
     "area_privativa_m2": {
-      "valor": "285.00",
+      "valor": 285.0,
       "status": "presente",
       "trecho_bruto": null
     },
     "area_total_m2": {
-      "valor": "600.00",
+      "valor": 600.0,
       "status": "presente",
       "trecho_bruto": null
     },
     "ano_construcao": {
-      "valor": "2012",
+      "valor": 2012,
       "status": "presente",
       "trecho_bruto": null
     },
     "valor_avaliacao_reais": {
-      "valor": "2180000.00",
+      "valor": 2180000.0,
       "status": "presente",
       "trecho_bruto": null
     },
@@ -648,22 +648,22 @@
       "trecho_bruto": null
     },
     "area_privativa_m2": {
-      "valor": "112.00",
+      "valor": 112.0,
       "status": "presente",
       "trecho_bruto": null
     },
     "area_total_m2": {
-      "valor": "155.00",
+      "valor": 155.0,
       "status": "presente",
       "trecho_bruto": null
     },
     "ano_construcao": {
-      "valor": "1987",
+      "valor": 1987,
       "status": "presente",
       "trecho_bruto": null
     },
     "valor_avaliacao_reais": {
-      "valor": "1320000.00",
+      "valor": 1320000.0,
       "status": "presente",
       "trecho_bruto": null
     },
@@ -701,12 +701,12 @@
       "trecho_bruto": null
     },
     "area_privativa_m2": {
-      "valor": "1450.00",
+      "valor": 1450.0,
       "status": "presente",
       "trecho_bruto": null
     },
     "area_total_m2": {
-      "valor": "3000.00",
+      "valor": 3000.0,
       "status": "presente",
       "trecho_bruto": null
     },
@@ -716,7 +716,7 @@
       "trecho_bruto": "Idade: aproximadamente 18 anos"
     },
     "valor_avaliacao_reais": {
-      "valor": "3900000.00",
+      "valor": 3900000.0,
       "status": "presente",
       "trecho_bruto": null
     },
@@ -754,22 +754,22 @@
       "trecho_bruto": null
     },
     "area_privativa_m2": {
-      "valor": "135.00",
+      "valor": 135.0,
       "status": "presente",
       "trecho_bruto": null
     },
     "area_total_m2": {
-      "valor": "200.00",
+      "valor": 200.0,
       "status": "presente",
       "trecho_bruto": null
     },
     "ano_construcao": {
-      "valor": "2003",
+      "valor": 2003,
       "status": "presente",
       "trecho_bruto": null
     },
     "valor_avaliacao_reais": {
-      "valor": "590000.00",
+      "valor": 590000.0,
       "status": "presente",
       "trecho_bruto": null
     },
@@ -807,22 +807,22 @@
       "trecho_bruto": null
     },
     "area_privativa_m2": {
-      "valor": "42.00",
+      "valor": 42.0,
       "status": "presente",
       "trecho_bruto": null
     },
     "area_total_m2": {
-      "valor": "67.00",
+      "valor": 67.0,
       "status": "presente",
       "trecho_bruto": null
     },
     "ano_construcao": {
-      "valor": "2010",
+      "valor": 2010,
       "status": "presente",
       "trecho_bruto": null
     },
     "valor_avaliacao_reais": {
-      "valor": "288000.00",
+      "valor": 288000.0,
       "status": "presente",
       "trecho_bruto": null
     },
@@ -860,7 +860,7 @@
       "trecho_bruto": null
     },
     "area_privativa_m2": {
-      "valor": "70.00",
+      "valor": 70.0,
       "status": "presente",
       "trecho_bruto": null
     },
@@ -870,12 +870,12 @@
       "trecho_bruto": "No cabeçalho consta área total 95 m², porém a tabela interna registra 92 m²; manter a divergência para conferência."
     },
     "ano_construcao": {
-      "valor": "2015",
+      "valor": 2015,
       "status": "presente",
       "trecho_bruto": null
     },
     "valor_avaliacao_reais": {
-      "valor": "610000.00",
+      "valor": 610000.0,
       "status": "presente",
       "trecho_bruto": null
     },
