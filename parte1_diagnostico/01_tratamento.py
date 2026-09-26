@@ -39,8 +39,12 @@ df["data_assinatura_contrato"] = pd.to_datetime(
 )
 
 # ---------------------------------------------------------------
-# 3. canal_origem: normalizar capitalização (4 linhas)
+# 3. canal_origem: normalizar espaços extras e capitalização (4 linhas)
+#    Achado na primeira rodada: 3 dessas 4 linhas tinham espaço em
+#    branco à direita ("mídia paga " != "mídia paga"), o que fez o
+#    primeiro mapeamento (sem .str.strip()) falhar silenciosamente.
 # ---------------------------------------------------------------
+df["canal_origem"] = df["canal_origem"].str.strip()
 mapa_canal = {
     "mídia paga": "Mídia paga",
     "indicação": "Indicação",

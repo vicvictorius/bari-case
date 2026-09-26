@@ -1,0 +1,194 @@
+######################################################################
+PERGUNTA 1 — Onde o funil perde mais valor?
+######################################################################
+
+Por etapa (quantidade de propostas x valor perdido):
+                 qtd_propostas  valor_perdido_R$_mi  pct_do_total_perdido
+etapa_max_funil                                                          
+1                          273                104.6                   5.2
+2                          984                375.0                  18.7
+3                         1799                703.0                  35.1
+4                         1267                497.0                  24.8
+5                          836                322.8                  16.1
+
+Por motivo de perda (status_final):
+                       qtd_propostas  valor_perdido_R$_mi  pct_do_total_perdido
+status_final                                                                   
+Sem retorno                     1639                631.3                  31.5
+Desistiu                        1492                586.1                  29.3
+Reprovada crédito                920                352.2                  17.6
+Problema garantia                668                263.8                  13.2
+Documentação pendente            440                168.9                   8.4
+
+>>> Cruzamento: etapa 3 (Análise de crédito) é a mais cara em qtd E em valor.
+>>> Ticket médio das perdidas na etapa 3: 390798.0
+>>> Ticket médio geral (todas as propostas): 384244.0
+
+######################################################################
+PERGUNTA 2 — A percepção da liderança se confirma?
+######################################################################
+
+--- Conversão por mês de entrada (tendência) ---
+             total  contratadas  conversao
+mes_entrada                               
+2024-01         20            4       20.0
+2024-02         59           12       20.3
+2024-03         94           13       13.8
+2024-04        135           25       18.5
+2024-05        160           36       22.5
+2024-06        202           28       13.9
+2024-07        269           58       21.6
+2024-08        300           74       24.7
+2024-09        310           59       19.0
+2024-10        367           83       22.6
+2024-11        394           79       20.1
+2024-12        424           86       20.3
+2025-01        465           97       20.9
+2025-02        484           80       16.5
+2025-03        527           95       18.0
+2025-04        439           78       17.8
+2025-05        400           91       22.8
+2025-06        373           78       20.9
+2025-07        307           53       17.3
+2025-08        266           45       16.9
+2025-09        172           30       17.4
+2025-10        136           21       15.4
+2025-11         70            8       11.4
+2025-12         27            8       29.6
+
+>>> ATENÇÃO: tempo_analise_dias vai até 78 dias.
+>>> Meses muito recentes da base podem estar artificialmente com conversão baixa
+>>> por ainda não terem tido tempo de fechar (censura à direita), não por queda real.
+
+--- Conversão por canal_origem (geral, toda a base) ---
+                total  contratadas  conversao
+canal_origem                                 
+Parceria          965          215       22.3
+Mídia paga       1272          274       21.5
+Indicação         980          207       21.1
+Organico         1411          292       20.7
+Correspondente   1772          253       14.3
+
+--- Conversão do canal Correspondente por mês (tendência isolada) ---
+             total  contratadas  conversao
+mes_entrada                               
+2024-01          4            1       25.0
+2024-02         18            4       22.2
+2024-03         20            2       10.0
+2024-04         28            4       14.3
+2024-05         42            7       16.7
+2024-06         57            5        8.8
+2024-07         62           11       17.7
+2024-08         71           13       18.3
+2024-09         83           12       14.5
+2024-10        102           15       14.7
+2024-11        115           16       13.9
+2024-12        122           17       13.9
+2025-01        121           16       13.2
+2025-02        153           21       13.7
+2025-03        142           20       14.1
+2025-04        128           19       14.8
+2025-05         99           17       17.2
+2025-06        108           17       15.7
+2025-07         92            7        7.6
+2025-08         83           12       14.5
+2025-09         54            9       16.7
+2025-10         37            6       16.2
+2025-11         22            0        0.0
+2025-12          9            2       22.2
+
+--- Mix de canal por mês (correspondente está perdendo participação?) ---
+canal_origem  Correspondente  Indicação  Mídia paga  Organico  Parceria
+mes_entrada                                                            
+2024-01                 20.0       15.0        20.0      30.0      15.0
+2024-02                 30.5       18.6        11.9      25.4      13.6
+2024-03                 21.3       13.8        18.1      27.7      19.1
+2024-04                 20.7        8.9        24.4      22.2      23.7
+2024-05                 26.2       17.5        22.5      22.5      11.2
+2024-06                 28.2       14.4        21.3      21.8      14.4
+2024-07                 23.0       18.2        21.6      20.4      16.7
+2024-08                 23.7       16.3        21.3      23.3      15.3
+2024-09                 26.8       15.2        23.5      20.3      14.2
+2024-10                 27.8       12.8        19.3      21.3      18.8
+2024-11                 29.2       13.5        16.5      26.6      14.2
+2024-12                 28.8       13.0        20.8      22.2      15.3
+2025-01                 26.0       15.7        19.1      23.4      15.7
+2025-02                 31.6       14.0        20.0      20.9      13.4
+2025-03                 26.9       15.0        19.7      24.9      13.5
+2025-04                 29.2       16.6        17.5      22.8      13.9
+2025-05                 24.8       18.5        21.5      20.0      15.2
+2025-06                 29.0       15.8        18.2      20.1      16.9
+2025-07                 30.0       16.0        16.9      20.5      16.6
+2025-08                 31.2       14.7        24.1      19.2      10.9
+2025-09                 31.4       17.4        20.9      20.3       9.9
+2025-10                 27.2       15.4        21.3      18.4      17.6
+2025-11                 31.4       15.7        14.3      21.4      17.1
+2025-12                 33.3       29.6         3.7      14.8      18.5
+
+######################################################################
+PERGUNTA 3 — Quais características mais se associam à contratação?
+######################################################################
+
+--- Por canal_origem ---
+                conversao
+canal_origem             
+Parceria             22.3
+Mídia paga           21.5
+Indicação            21.1
+Organico             20.7
+Correspondente       14.3
+
+--- Por tipo_imovel ---
+                total  contratadas  conversao
+tipo_imovel                                  
+Terreno           535          113       21.1
+Sala comercial    795          166       20.9
+Imóvel rural      248           50       20.2
+Apartamento      2745          533       19.4
+Casa             2077          379       18.2
+
+--- Por faixa de LTV ---
+                          total  contratadas  conversao
+faixa_ltv                                              
+<=40%                      1260          259       20.6
+40-50%                     2144          494       23.0
+50-60%                     2015          364       18.1
+>60% (acima da política)    981          124       12.6
+
+--- Por faixa de score_credito ---
+             total  contratadas  conversao
+faixa_score                               
+<=500           81            1        1.2
+501-650       2507          337       13.4
+651-750       2922          622       21.3
+>750           890          281       31.6
+
+--- Por faixa de ticket (valor_solicitado) ---
+              total  contratadas  conversao
+faixa_ticket                               
+Q1 (menor)     1600          333       20.8
+Q2             1600          337       21.1
+Q3             1600          291       18.2
+Q4 (maior)     1600          280       17.5
+
+--- Por região (top 5 UF por volume) ---
+    total  contratadas  conversao
+uf                               
+GO    522          122       23.4
+SP   1648          328       19.9
+PE    564          102       18.1
+RS    540           96       17.8
+RJ    558           98       17.6
+
+--- Por faixa de prazo_meses ---
+             total  contratadas  conversao
+faixa_prazo                               
+<=120         3893          747       19.2
+121-180       1293          243       18.8
+181-240       1214          251       20.7
+
+--- flag_cliente_recorrente ---
+                         total  contratadas  conversao
+flag_cliente_recorrente                               
+0                         5174          953       18.4
+1                         1226          288       23.5
