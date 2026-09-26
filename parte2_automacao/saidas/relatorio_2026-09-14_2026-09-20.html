@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Bari — Relatório semanal | 14/09/2026 a 20/09/2026</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#eef2f4;color:#193341;font:16px/1.6 system-ui,sans-serif}
+main{max-width:1100px;margin:32px auto;padding:32px;background:white;border-top:6px solid #14756b}
+h1{font-size:32px;line-height:1.2;margin:8px 0}h2{font-size:21px;margin-top:30px}
+.selo{font-size:13px;letter-spacing:2px;color:#14756b;font-weight:bold}.sub{color:#50636d}
+.aviso{padding:16px 24px;background:#fff6dc;border-left:4px solid #bd8c20;margin-top:24px}
+.aviso ul{padding-left:18px}.tabela{overflow-x:auto}table{width:100%;border-collapse:collapse;font-size:14px}
+th,td{text-align:right;padding:12px;border-bottom:1px solid #d9e2e6}th:first-child,td:first-child{text-align:left}
+th{background:#eaf3f1}footer{font-size:13px;color:#50636d;margin-top:32px}
+.filtros{margin-top:24px;padding:16px 24px;border:1px solid #d9e2e6;background:#f5f9f8}
+.filtros h2{margin:0 0 12px}.filtros fieldset{border:0;margin:0;padding:0;display:flex;gap:16px;flex-wrap:wrap;align-items:end}
+.filtros label{display:flex;flex-direction:column;gap:4px}.filtros select,.filtros button{font:inherit;padding:8px;border:1px solid #a8bbb9;border-radius:4px;background:white;color:#193341;max-width:100%}
+.filtros button{cursor:pointer}.filtros p{margin-bottom:0;font-size:14px}
+@media(max-width:600px){main{margin:0;padding:18px}h1{font-size:26px}}
+@media print{body{background:white}main{margin:0;padding:10px}tr{break-inside:avoid}}
+</style></head><body><main>
+<div class="selo">BARI · AI &amp; DATA LAB · DADOS SINTÉTICOS</div>
+<h1>Relatório semanal do funil</h1><p class="sub">Entradas de 14/09/2026 a 20/09/2026 · referência 26/09/2026</p>
+<section class="aviso"><strong>Como interpretar este relatório</strong><ul><li>Análise retrospectiva por data de entrada: os desfechos são os disponíveis no arquivo, inclusive os posteriores à semana selecionada. Não representa o status conhecido naquela data.</li><li>Coortes recentes podem estar imaturas. Conversão observada não é previsão de conversão final nem taxa de contratos assinados durante a semana.</li><li>Sem propostas com entrada na semana. Conversão não aplicável; ausência de registros não comprova ausência de atividade.</li><li>Possível base desatualizada: a última entrada é anterior à semana selecionada. Confirme a atualização do arquivo.</li></ul></section>
+<section class="filtros" aria-labelledby="titulo-filtros">
+<h2 id="titulo-filtros">Explorar a semana</h2>
+<fieldset id="controles-filtros" disabled aria-label="Filtros da coorte semanal">
+<label for="filtro-canal">Canal de origem<select id="filtro-canal"><option value="0">Todos</option></select></label>
+<label for="filtro-etapa">Última etapa alcançada<select id="filtro-etapa"><option value="0">Todas</option><option value="1">1 — Simulação</option><option value="2">2 — Lead</option><option value="3">3 — Análise de crédito</option><option value="4">4 — Avaliação do imóvel</option><option value="5">5 — Formalização</option><option value="6">6 — Contratação</option></select></label>
+<button id="limpar-filtros" type="button">Limpar filtros</button></fieldset>
+<p>Os filtros afetam somente os cinco indicadores da semana selecionada na visão geral.
+Semana anterior, acumulado e tabelas abaixo permanecem sem filtros.</p>
+<p id="situacao-filtros" role="status" aria-live="polite">Sem filtros: indicadores da semana completa.</p>
+<noscript><p>Ative o JavaScript para explorar os filtros. Os valores exibidos representam a semana completa.</p></noscript>
+</section>
+<h2>Visão geral</h2><div class='tabela'><table id="resumo-semanal"><thead><tr><th scope='col'>Indicador</th><th scope='col'>Semana selecionada</th><th scope='col'>Semana anterior</th><th scope='col'>Acumulado até domingo</th></tr></thead><tbody><tr><td>Propostas recebidas</td><td>0</td><td>0</td><td>6.400</td></tr><tr><td>Contratadas na coorte</td><td>0</td><td>0</td><td>1.241</td></tr><tr><td>Conversão observada</td><td>Não aplicável</td><td>Não aplicável</td><td>19,39%</td></tr><tr><td>Crédito solicitado (R$)</td><td>0,00</td><td>0,00</td><td>2.459.159.233,91</td></tr><tr><td>Valor solicitado não contratado (R$)</td><td>0,00</td><td>0,00</td><td>2.002.366.493,45</td></tr></tbody></table></div>
+<p>Semana anterior: 07/09/2026 a 13/09/2026.
+O acumulado considera todas as entradas anteriores a 21/09/2026.</p>
+<h2>Onde se concentra o valor não contratado na coorte da semana</h2><p class="sub">Semana completa — sem filtros.</p><p>Sem propostas não contratadas nesta coorte.</p>
+<h2>Desempenho por canal de origem na coorte da semana</h2><p class="sub">Semana completa — sem filtros.</p><p>Sem propostas na semana para segmentar por canal.</p>
+<h2>Definições e limites</h2>
+<p>Conversão = propostas com status Contratada ÷ total de propostas da coorte.
+Valor perdido = soma do valor solicitado nas propostas com status diferente de Contratada,
+conforme a Parte 1. Representa principal solicitado não contratado, não receita ou prejuízo contábil.
+As perdas são atribuídas à última etapa alcançada, não à data em que ocorreram.</p>
+<p>O arquivo não contém histórico de status nem data de extração. A última entrada não comprova
+a atualização do arquivo. Comparações semanais são descritivas e não demonstram causalidade.</p>
+<footer>Fonte: Propostas_credito.csv · 6.400 registros tratados, sem descarte.<br>
+Entradas disponíveis: 11/01/2024 a 29/12/2025.
+Gerado pela rotina da Parte 2, reutilizando o tratamento da Parte 1.</footer>
+</main><script type="application/json" id="dados-filtros">{"canais": [], "resultados": [[["0", "0", "N\u00e3o aplic\u00e1vel", "0,00", "0,00"], ["0", "0", "N\u00e3o aplic\u00e1vel", "0,00", "0,00"], ["0", "0", "N\u00e3o aplic\u00e1vel", "0,00", "0,00"], ["0", "0", "N\u00e3o aplic\u00e1vel", "0,00", "0,00"], ["0", "0", "N\u00e3o aplic\u00e1vel", "0,00", "0,00"], ["0", "0", "N\u00e3o aplic\u00e1vel", "0,00", "0,00"], ["0", "0", "N\u00e3o aplic\u00e1vel", "0,00", "0,00"]]]}</script>
+<script id="interacao-filtros">
+(() => {
+    "use strict";
+    const dados = JSON.parse(document.getElementById("dados-filtros").textContent);
+    const canal = document.getElementById("filtro-canal");
+    const etapa = document.getElementById("filtro-etapa");
+    const tabela = document.getElementById("resumo-semanal");
+    const titulo = tabela.tHead.rows[0].cells[1];
+    const celulas = Array.from(tabela.tBodies[0].rows, linha => linha.cells[1]);
+    const situacao = document.getElementById("situacao-filtros");
+    function atualizar() {
+        const valores = dados.resultados[Number(canal.value)][Number(etapa.value)];
+        celulas.forEach((celula, indice) => { celula.textContent = valores[indice]; });
+        const ativo = canal.value !== "0" || etapa.value !== "0";
+        titulo.textContent = ativo ? "Semana selecionada — filtros aplicados" : "Semana selecionada";
+        situacao.textContent = ativo
+            ? "Filtro ativo: " + canal.options[canal.selectedIndex].textContent + " / "
+                + etapa.options[etapa.selectedIndex].textContent
+                + (valores[0] === "0" ? ". Sem propostas para esta combinação." : ".")
+            : "Sem filtros: indicadores da semana completa.";
+    }
+    canal.addEventListener("change", atualizar);
+    etapa.addEventListener("change", atualizar);
+    document.getElementById("limpar-filtros").addEventListener("click", () => {
+        canal.value = "0";
+        etapa.value = "0";
+        atualizar();
+    });
+    canal.value = "0";
+    etapa.value = "0";
+    atualizar();
+    document.getElementById("controles-filtros").disabled = false;
+})();
+</script></body></html>
