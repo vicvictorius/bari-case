@@ -154,7 +154,12 @@ def normalizar_valor(valor: str | None) -> str | None:
     if valor is None:
         return None
 
-    texto = valor.strip()
+    # A partir do schema tipado, a extração traz números como número JSON
+    # (ex: 78.4). O gabarito histórico guarda texto (ex: "78.40").
+    if isinstance(valor, (int, float)) and not isinstance(valor, bool):
+        return f"num:{round(float(valor), 2)}"
+
+    texto = str(valor).strip()
 
     # Primeiro tenta interpretar o valor original como data.
     data_iso = _tentar_parse_data(texto)
@@ -328,11 +333,37 @@ def avaliar(
         else 0
     )
 
+    valores_aplicaveis = sum(
+        contagens["valor_aplicavel"]
+        for contagens in por_campo.values()
+    )
+
+    valores_corretos = sum(
+        contagens["valor_ok"]
+        for contagens in por_campo.values()
+    )
+
+    # Acurácia de valor mede o que importa para quem consome o dado:
+    # dos campos que o gabarito diz "presente" e o modelo também, quantos
+    # vieram com o valor certo. Status certo com valor errado não conta.
+    acuracia_valor_geral = (
+        valores_corretos / valores_aplicaveis
+        if valores_aplicaveis > 0
+        else None
+    )
+
     return {
         "acuracia_status_geral": round(
             acuracia_status_geral,
             3,
         ),
+        "acuracia_valor_geral": (
+            round(acuracia_valor_geral, 3)
+            if acuracia_valor_geral is not None
+            else None
+        ),
+        "valores_corretos": valores_corretos,
+        "valores_aplicaveis": valores_aplicaveis,
         "por_campo": resumo,
         "divergencias": divergencias,
         "arquivos_faltando_na_extracao":
@@ -352,6 +383,25 @@ def gerar_relatorio_md(resultado: dict) -> str:
             "(presente/ausente/conflitante correto): "
             f"**{resultado['acuracia_status_geral']:.1%}**"
         ),
+        "",
+        (
+            "Acurácia geral de valor "
+            "(valor certo quando gabarito e extração dizem presente): "
+            + (
+                f"**{resultado['acuracia_valor_geral']:.1%}** "
+                f"({resultado['valores_corretos']}/"
+                f"{resultado['valores_aplicaveis']})"
+                if resultado["acuracia_valor_geral"] is not None
+                else "n/a"
+            )
+        ),
+        "",
+        (
+            "As duas métricas medem coisas diferentes: status certo não "
+            "garante valor certo. Para uso do dado, a acurácia de valor é "
+            "a mais relevante."
+        ),
+        "",
         (
             f"Laudos no gabarito: "
             f"{resultado['total_laudos_gabarito']} | "
@@ -486,6 +536,12 @@ def main() -> None:
         "Acurácia geral de status: "
         f"{resultado['acuracia_status_geral']:.1%}"
     )
+
+    if resultado["acuracia_valor_geral"] is not None:
+        print(
+            "Acurácia geral de valor: "
+            f"{resultado['acuracia_valor_geral']:.1%}"
+        )
 
     print(
         f"Relatório gravado em {args.relatorio}"

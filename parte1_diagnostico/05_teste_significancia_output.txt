@@ -1,0 +1,12 @@
+
+--- Queda de conversão: 2024 x jan-out/2025 ---
+2024: 557/2734 = 20.4%
+jan-out/2025: 668/3569 = 18.7%
+Diferença: +1.66 p.p. (IC 95%: -0.32 a +3.64 p.p.)
+z = 1.65 | p-valor = 0.0996
+
+--- Canal: Correspondente x demais canais (base toda) ---
+Correspondente: 253/1772 = 14.3%
+Demais: 988/4628 = 21.3%
+Diferença: -7.07 p.p. (IC 95%: -9.08 a -5.06 p.p.)
+z = -6.40 | p-valor = 0.0000

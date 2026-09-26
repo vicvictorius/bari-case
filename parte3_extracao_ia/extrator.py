@@ -33,7 +33,7 @@ from pathlib import Path
 import anthropic
 from pydantic import ValidationError
 
-from schema import CAMPOS_LAUDO, LaudoExtraido
+from schema import CAMPOS_LAUDO, LaudoExtraido, json_schema_campos
 
 logger = logging.getLogger("extrator_laudos")
 
@@ -60,14 +60,18 @@ Regras obrigatórias:
 1. Quando status for "ausente" ou "conflitante", o campo "trecho_bruto" é \
 OBRIGATÓRIO e deve ser uma cópia literal do trecho do laudo que justifica \
 essa classificação (não parafraseie).
-2. Quando status for "presente", "valor" deve ser a informação normalizada \
-(ex: valores em R$ apenas com dígitos e ponto decimal, datas em \
-formato ISO AAAA-MM-DD, áreas apenas o número em m²).
+2. Quando status for "presente", "valor" deve ser a informação normalizada: \
+áreas e valores em R$ como número puro (ex: 1275000.00, 78.4), ano como \
+inteiro de 4 dígitos (ex: 2014) e datas em formato ISO AAAA-MM-DD. Nada de \
+texto, unidade ou prefixo junto do número.
 3. NUNCA "chute" um valor plausível para um campo ausente ou conflitante. \
 Um extrator que erra "sabendo que não sabe" é melhor que um que inventa. \
 Se você não tem certeza, use "ausente" ou "conflitante" -- nunca invente.
 4. Valores por extenso (ex: "seiscentos e oitenta mil reais") devem ser \
 convertidos para número quando não houver ambiguidade.
+5. Quando status for "ausente" ou "conflitante", deixe "valor" como null. \
+Para campos numéricos e datas, qualquer valor enviado nesses casos é \
+descartado; a evidência vai em "trecho_bruto".
 """
 
 
@@ -77,16 +81,7 @@ def montar_tool_schema() -> dict:
     Mantemos uma única fonte de verdade (schema.py) para o formato de saída,
     em vez de duplicar a definição dos campos aqui.
     """
-    campo_schema = {
-        "type": "object",
-        "properties": {
-            "valor": {"type": ["string", "null"]},
-            "status": {"type": "string", "enum": ["presente", "ausente", "conflitante"]},
-            "trecho_bruto": {"type": ["string", "null"]},
-        },
-        "required": ["status"],
-    }
-    properties = {campo: campo_schema for campo in CAMPOS_LAUDO}
+    properties = json_schema_campos()
     return {
         "name": TOOL_NAME,
         "description": "Registra a extração estruturada de um laudo de avaliação.",

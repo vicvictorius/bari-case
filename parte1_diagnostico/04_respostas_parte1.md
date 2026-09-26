@@ -2,7 +2,7 @@
 
 Métricas usadas: conversão = Contratada / total de propostas (19,39%); valor solicitado não contratado =
 soma de `valor_solicitado` das propostas não contratadas (ver `definicao_metricas.md`).
-Evidência completa em `02_diagnostico_funil.py` / `diagnostico_output.txt`.
+Evidência completa em `03_diagnostico_funil.py` / `03_diagnostico_output.txt`.
 
 ## 1. Onde o funil perde mais valor?
 
@@ -40,7 +40,7 @@ que sai por desistência ou falta de retorno.
 
 ### Conversão caiu?
 
-Sim, existe um sinal de queda nos dados, mas sua magnitude é moderada.
+Existe um sinal de queda nos dados, mas ele é fraco: a diferença não é estatisticamente significativa (p ≈ 0,10, ver abaixo).
 
 - Conversão de 2024: **20,4%**
 - Conversão de 2025, considerando meses maduros de janeiro a outubro: **18,7%**
@@ -79,11 +79,24 @@ Correspondentes podem receber propostas com distribuições diferentes de score,
 ou outras características. Portanto, a diferença observada deve ser investigada antes de
 ser interpretada como falha operacional do canal.
 
-**Confiança nessa resposta: moderada.**
+**Confiança nessa resposta: baixa para a queda, alta para o canal.**
 
-A tendência de queda da conversão é consistente, mas a série cobre aproximadamente dois
-anos e não permite separar completamente efeitos estruturais de possíveis efeitos de
-sazonalidade.
+Para medir isso, as duas diferenças passaram por um teste z de duas proporções
+(`05_teste_significancia.py`, saída em `05_teste_significancia_output.txt`):
+
+| Comparação | Diferença | IC 95% | p-valor |
+|---|---:|---:|---:|
+| 2024 (20,4%) x jan–out/2025 (18,7%) | −1,66 p.p. | −3,64 a +0,32 p.p. | 0,10 |
+| Correspondente (14,3%) x demais canais (21,3%) | −7,07 p.p. | −9,08 a −5,06 p.p. | < 0,0001 |
+
+A queda de conversão **não é estatisticamente significativa** ao nível usual de 5%: o
+intervalo de confiança inclui zero, então uma diferença desse tamanho poderia aparecer só
+por variação amostral. A série também cobre cerca de dois anos, o que não permite separar
+efeitos estruturais de sazonalidade. A leitura correta é "sinal fraco de queda, a
+acompanhar", não "a conversão caiu".
+
+Já a diferença do Correspondente é grande, estável no tempo e muito acima do que o acaso
+explicaria.
 
 O achado descritivo do canal Correspondente é mais consistente, pois a diferença observada
 é maior e aparece ao longo do tempo. Ainda assim, esta análise não controla simultaneamente

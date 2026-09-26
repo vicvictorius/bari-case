@@ -9,7 +9,8 @@ privativa, área total, ano de construção, valor de avaliação, matrícula,
 
 | Arquivo | O que faz |
 |---|---|
-| `schema.py` | Contrato de dados (Pydantic): cada campo possui `valor`, `status` (`presente`, `ausente` ou `conflitante`) e `trecho_bruto` de evidência |
+| `schema.py` | Contrato de dados (Pydantic): cada campo possui `valor`, `status` (`presente`, `ausente` ou `conflitante`) e `trecho_bruto` de evidência. Áreas e valor são `float`, ano é `int` e data é `date` |
+| `normalizacao.py` | Parser estrito que converte texto em número, ano ou data e rejeita qualquer texto em volta |
 | `extrator.py` | Pipeline alternativo via API da Anthropic, com saída estruturada, validação e nova tentativa quando a resposta é inválida |
 | `extrator_local.py` | Pipeline utilizado na execução real da entrega, via modelos locais com Ollama |
 | `construir_gabarito.py` | Contém o gabarito de referência revisado e gera `gabarito.json` validando os registros pelo schema oficial |
@@ -20,6 +21,7 @@ privativa, área total, ano de construção, valor de avaliação, matrícula,
 | `testes/test_avaliador.py` | Testes automatizados do avaliador e da normalização dos valores |
 | `testes/test_extrator_local.py` | Testes do extrator local com cliente Ollama simulado |
 | `testes/test_schema.py` | Testes das regras de validação do schema, incluindo regressão de erro encontrado durante a execução real |
+| `testes/test_schema_tipado.py` | Testes do parser e dos campos tipados, usando as saídas reais que antes passavam pela validação |
 | `decisoes.md` | Registro das decisões de modelagem, experimentos, limitações e trade-offs |
 
 ## Como rodar
@@ -133,24 +135,32 @@ executar o `qwen2.5:7b-instruct` de forma mais viável.
 O modelo foi avaliado utilizando os mesmos **17 laudos** e o mesmo
 gabarito.
 
-A acurácia de status foi:
+Resultado:
 
-**92,9%**
+| Métrica | Resultado |
+|---|---:|
+| Acurácia de status | **92,9%** (158/170) |
+| Acurácia de valor | **63,6%** (91/143) |
 
 Resultado por campo:
 
-| Campo | Acurácia de status |
-|---|---:|
-| `tipo_imovel` | 94,1% |
-| `endereco` | 100,0% |
-| `area_privativa_m2` | 70,6% |
-| `area_total_m2` | 94,1% |
-| `ano_construcao` | 88,2% |
-| `valor_avaliacao_reais` | 100,0% |
-| `matricula` | 100,0% |
-| `onus` | 88,2% |
-| `data_vistoria` | 94,1% |
-| `responsavel_tecnico` | 100,0% |
+| Campo | Status | Valor (quando presente) |
+|---|---:|---:|
+| `tipo_imovel` | 94,1% | 93,8% |
+| `endereco` | 100,0% | 29,4% |
+| `area_privativa_m2` | 70,6% | 50,0% |
+| `area_total_m2` | 94,1% | 42,9% |
+| `ano_construcao` | 88,2% | 54,5% |
+| `valor_avaliacao_reais` | 100,0% | 64,7% |
+| `matricula` | 100,0% | 50,0% |
+| `onus` | 88,2% | 33,3% |
+| `data_vistoria` | 94,1% | 100,0% |
+| `responsavel_tecnico` | 100,0% | 94,1% |
+
+A acurácia de valor é a que importa para quem consome o dado. Um campo
+com status 100% e valor 64,7%, como `valor_avaliacao_reais`, significa
+que o modelo sempre achou o valor, mas errou ou formatou mal um em cada
+três.
 
 Os artefatos dessa execução estão disponíveis em:
 
@@ -171,8 +181,16 @@ O resultado reforça que uma única métrica agregada não é suficiente para
 avaliar a qualidade de um extrator.
 
 Um campo pode apresentar o `status` correto e ainda possuir um `valor`
-incorreto. Por isso, o avaliador também compara os valores extraídos e
+incorreto. Por isso, o avaliador reporta as duas métricas lado a lado e
 mantém as divergências disponíveis para auditoria.
+
+Boa parte dos erros de valor era de formato: números com texto em volta
+(`"Possui 61m²"`, `"strconv(285)"`, `".275.000,00"`). Isso levou ao
+schema tipado: áreas e valor como `float`, ano como `int`, data como
+`date`, convertidos por um parser estrito em `normalizacao.py`. Com ele,
+13 dos 17 laudos da execução histórica seriam rejeitados e reenviados
+ao modelo, em vez de aceitos com lixo. O schema tipado ainda não foi
+reexecutado contra o modelo; ver `decisoes.md`.
 
 Os experimentos também mostraram um trade-off entre **tamanho do modelo,
 qualidade da extração, tempo de execução e hardware disponível**.
@@ -191,7 +209,9 @@ A avaliação possui algumas limitações conhecidas:
 - a acurácia observada neste conjunto não deve ser generalizada
   automaticamente para documentos fora da amostra;
 - o pipeline via Anthropic não foi comparado experimentalmente com os
-  modelos locais.
+  modelos locais;
+- o schema tipado ainda não foi reexecutado contra o modelo;
+- a acurácia de valor (63,6%) não permite uso do dado sem revisão humana.
 
 As decisões completas e os problemas encontrados durante o desenvolvimento
 estão documentados em [`decisoes.md`](decisoes.md).

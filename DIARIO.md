@@ -28,7 +28,9 @@ Criei um gabarito de comparação e passei a distinguir **status correto** de **
 
 Também aprendi que o próprio avaliador precisa ser testado: o bug de normalização mostrou que uma métrica incorreta pode levar a uma conclusão incorreta sobre o modelo. Ao final, deixei de enxergar uma integração com LLM apenas como `prompt → resposta` e passei a tratá-la como um sistema com contrato, validação, retry, referência de comparação e auditoria.
 
-Não registrei separadamente as horas dedicadas exclusivamente a esse aprendizado, pois ele ocorreu junto à implementação e às rodadas de avaliação. Por isso, não atribuo uma estimativa que não foi medida.
+**Onde aprendi:** principalmente na prática, nas execuções reais contra os 17 laudos. Os bugs do `status=presente` com `valor=None` e da normalização do avaliador ensinaram mais do que qualquer leitura. Complementei com conversas com o Claude sobre como validar a saída de um LLM.
+
+**Quanto tempo levou:** não medi separadamente, porque o aprendizado aconteceu junto com a implementação. Ele ocorreu dentro das cerca de **4 horas** que dediquei à Parte 3, registradas no README.
 
 ## c) Autocrítica e o que faria com mais 40 horas
 

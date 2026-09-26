@@ -49,7 +49,8 @@ def tratar_dados(df: pd.DataFrame) -> pd.DataFrame:
     mapa_canal = {
         "mídia paga": "Mídia paga",
         "indicação": "Indicação",
-        "organico": "Organico",
+        "organico": "Orgânico",
+        "Organico": "Orgânico",  # acento padronizado com os demais canais
     }
     df["canal_origem"] = df["canal_origem"].replace(mapa_canal)
 

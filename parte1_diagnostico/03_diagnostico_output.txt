@@ -66,7 +66,7 @@ canal_origem
 Parceria          965          215       22.3
 Mídia paga       1272          274       21.5
 Indicação         980          207       21.1
-Organico         1411          292       20.7
+Orgânico         1411          292       20.7
 Correspondente   1772          253       14.3
 
 --- Conversão do canal Correspondente por mês (tendência isolada) ---
@@ -98,7 +98,7 @@ mes_entrada
 2025-12          9            2       22.2
 
 --- Mix de canal por mês (correspondente está perdendo participação?) ---
-canal_origem  Correspondente  Indicação  Mídia paga  Organico  Parceria
+canal_origem  Correspondente  Indicação  Mídia paga  Orgânico  Parceria
 mes_entrada                                                            
 2024-01                 20.0       15.0        20.0      30.0      15.0
 2024-02                 30.5       18.6        11.9      25.4      13.6
@@ -135,7 +135,7 @@ canal_origem
 Parceria             22.3
 Mídia paga           21.5
 Indicação            21.1
-Organico             20.7
+Orgânico             20.7
 Correspondente       14.3
 
 --- Por tipo_imovel ---

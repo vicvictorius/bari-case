@@ -16,8 +16,8 @@ Os principais achados foram:
 
 - **Análise de crédito (etapa 3)** concentra **35,1% do valor solicitado não contratado**, aproximadamente **R$ 703 milhões**.
 - Considerando as perdas do funil por motivo, **60,8% do valor solicitado não contratado** está associado a desistência ou falta de retorno do cliente, e não diretamente à reprovação de crédito.
-- A conversão observada passou de **20,4% em 2024 para 18,7% nas coortes maduras de Jan–Out/2025**. A deterioração existe nos dados analisados, mas não foi submetida a teste de significância estatística e não deve ser interpretada isoladamente como evidência de uma queda estrutural permanente.
-- O canal **Correspondente** apresentou conversão de **14,3%**, contra aproximadamente **20–22%** nos demais canais, enquanto aumentou sua participação no volume.
+- A conversão observada passou de **20,4% em 2024 para 18,7% nas coortes maduras de Jan–Out/2025**, mas essa diferença **não é estatisticamente significativa** (teste z de duas proporções, p ≈ 0,10; IC 95% da diferença de −3,6 a +0,3 p.p.). É um sinal fraco a acompanhar, não uma queda comprovada.
+- O canal **Correspondente** apresentou conversão de **14,3%**, contra **21,3%** nos demais canais somados (p < 0,0001), enquanto aumentou sua participação no volume. Esse é o sinal mais robusto da análise.
 - **Score de crédito** apresentou a maior associação observada com contratação, com amplitude de **30,4 pontos percentuais** entre grupos analisados, seguido por LTV e canal de origem.
 
 Essas relações são **associações observadas nos dados**, não evidência de causalidade.
@@ -105,14 +105,16 @@ bari-case/
 │   └── tratamento.py
 │
 ├── parte1_diagnostico/
-│   ├── 00Profilling.py
+│   ├── 00_profiling.py
+│   ├── 00_profiling_output.txt
 │   ├── 01_tratamento.py
 │   ├── 02_comparacao_metricas.py
-│   ├── 02_diagnostico_funil.py
-│   ├── 03_respostas_parte1.md
+│   ├── 03_diagnostico_funil.py
+│   ├── 03_diagnostico_output.txt
+│   ├── 04_respostas_parte1.md
+│   ├── 05_teste_significancia.py
+│   ├── 05_teste_significancia_output.txt
 │   ├── definicao_metricas.md
-│   ├── diagnostico_output.txt
-│   ├── profilling_output.txt
 │   ├── propostas_credito_tratado.csv
 │   └── registro_tratamento.md
 │
@@ -124,6 +126,7 @@ bari-case/
 │
 ├── parte3_extracao_ia/
 │   ├── schema.py
+│   ├── normalizacao.py
 │   ├── extrator.py
 │   ├── extrator_local.py
 │   ├── avaliador.py
@@ -138,6 +141,7 @@ bari-case/
 ├── DIARIO.md
 ├── PLANO.md
 ├── RESUMO_EXECUTIVO.md
+├── RESUMO_EXECUTIVO.pdf
 ├── requirements.txt
 └── README.md
 ```
@@ -173,7 +177,7 @@ parte1_diagnostico/registro_tratamento.md
 As respostas consolidadas da Parte 1 estão em:
 
 ```text
-parte1_diagnostico/03_respostas_parte1.md
+parte1_diagnostico/04_respostas_parte1.md
 ```
 
 Uma preocupação durante essa etapa foi evitar que a limpeza dos dados alterasse silenciosamente os resultados do negócio.
@@ -370,38 +374,53 @@ Resultado:
 
 ```text
 17/17 laudos processados
-92,9% de acurácia de status
+92,9% de acurácia de status  (158/170)
+63,6% de acurácia de valor   (91/143)
 ```
 
-A métrica de 92,9% corresponde a **158 classificações de status corretas em 170 comparações**.
+As duas métricas respondem perguntas diferentes:
 
-A diferença para o Qwen3 1.7B foi de apenas **0,5 ponto percentual** na métrica agregada de status.
+- **status**: o modelo percebeu corretamente se o campo estava presente, ausente ou conflitante?
+- **valor**: quando o campo estava presente, o conteúdo extraído estava certo?
 
-A avaliação por campo mostrou, entretanto, diferenças importantes.
+Para quem vai usar o dado, a métrica que importa é a de **valor**. Ela mostra que o extrator ainda não está pronto para uso sem revisão:
 
-No Qwen2.5 7B, por exemplo:
+| Campo | Status | Valor |
+|---|---:|---:|
+| `data_vistoria` | 94,1% | 100,0% |
+| `responsavel_tecnico` | 100,0% | 94,1% |
+| `tipo_imovel` | 94,1% | 93,8% |
+| `valor_avaliacao_reais` | 100,0% | 64,7% |
+| `ano_construcao` | 88,2% | 54,5% |
+| `matricula` | 100,0% | 50,0% |
+| `area_privativa_m2` | 70,6% | 50,0% |
+| `area_total_m2` | 94,1% | 42,9% |
+| `onus` | 88,2% | 33,3% |
+| `endereco` | 100,0% | 29,4% |
 
-```text
-area_privativa_m2         70,6%
-endereco                 100,0%
-valor_avaliacao_reais    100,0%
-matricula                100,0%
-responsavel_tecnico      100,0%
-```
+Os erros de valor têm duas origens, que o relatório permite separar linha a linha:
 
-Esses valores correspondem à **acurácia de status** desses campos no conjunto avaliado.
+1. **Formato:** números com texto em volta, como `"Possui R$ 455.000,00"`, `"id_146.00"` ou `".275.000,00"` (esperado 1.275.000,00). Isso motivou o schema tipado descrito abaixo.
+2. **Conteúdo:** troca entre área privativa e área total, e ônus ou endereço resumidos de forma diferente do gabarito. Em campos de texto livre, parte da divergência é do critério de comparação exata, que é rígido de propósito (`Belo Horizonte/MG` ≠ `Belo Horizonte - MG`).
 
-Além disso, a análise mostrou que um `status` correto não implica necessariamente que o conteúdo extraído esteja correto.
+A diferença de status para o Qwen3 1.7B foi de apenas **0,5 ponto percentual**, e a amostra tem 17 laudos. Por isso, a comparação entre modelos não foi reduzida a uma conclusão de que o modelo maior é universalmente superior.
 
-Por isso, a comparação entre modelos não foi reduzida a uma conclusão de que o modelo maior é universalmente superior.
+## Schema tipado: garantia de formato
 
-A amostra contém apenas 17 laudos, e existem diferenças importantes entre:
+Na execução acima, todo `valor` era texto, então o formato do envelope (`valor`, `status`, `trecho_bruto`) era garantido, mas o conteúdo não. A correção foi tipar os campos:
 
-```text
-acurácia de status
-        ≠
-acurácia do valor
-```
+| Campo | Tipo |
+|---|---|
+| áreas e valor de avaliação | `float` positivo |
+| ano de construção | `int` entre 1800 e o ano atual |
+| data da vistoria | `date` (AAAA-MM-DD) |
+| demais | texto |
+
+A conversão é feita por um parser determinístico (`normalizacao.py`), não pelo LLM. Ele é estrito: aceita só o número, com `R$` antes ou `m²` depois, e rejeita qualquer texto em volta. A rejeição dispara o retry que já existia no extrator. Os tipos também são enviados ao modelo no JSON schema, para restringir a saída já na geração.
+
+Aplicando o schema tipado à saída histórica do Qwen2.5 7B, **13 dos 17 laudos seriam barrados** (40 valores com texto em volta) em vez de aceitos. Isso está coberto por teste.
+
+> O schema tipado ainda **não foi reexecutado contra o modelo**. Não há como afirmar, sem rodar, quanto o retry e a restrição de tipo recuperam desses 13 laudos.
 
 Os resultados completos estão em:
 
@@ -429,9 +448,9 @@ Na execução final:
 
 ```text
 Parte 2: 37 testes aprovados
-Parte 3: 32 testes aprovados
+Parte 3: 79 testes aprovados
 
-Total: 69 testes aprovados
+Total: 116 testes aprovados
 ```
 
 A suíte completa foi executada com:
@@ -443,7 +462,7 @@ python -m pytest -v
 e terminou com:
 
 ```text
-69 passed
+116 passed
 ```
 
 Os testes cobrem, entre outros pontos:
@@ -463,6 +482,8 @@ Os testes cobrem, entre outros pontos:
 - normalização de números e datas;
 - avaliação das extrações;
 - validação Pydantic;
+- conversão estrita de números, anos e datas no schema tipado;
+- rejeição das saídas com texto em volta observadas na execução real;
 - parsing das respostas do modelo;
 - retry de respostas inválidas;
 - detecção de laudos ausentes;
@@ -505,13 +526,25 @@ pip install -r requirements.txt
 
 ## Executar a Parte 1
 
-Os scripts estão organizados em ordem de execução dentro de:
+Na raiz do projeto, com o ambiente virtual ativo, rode os scripts na ordem:
 
-```text
-parte1_diagnostico/
+```bash
+python parte1_diagnostico/00_profiling.py > parte1_diagnostico/00_profiling_output.txt
+python parte1_diagnostico/01_tratamento.py
+python parte1_diagnostico/02_comparacao_metricas.py
+python parte1_diagnostico/03_diagnostico_funil.py > parte1_diagnostico/03_diagnostico_output.txt
+python parte1_diagnostico/05_teste_significancia.py > parte1_diagnostico/05_teste_significancia_output.txt
 ```
 
-Os principais artefatos gerados e utilizados na análise também estão preservados nessa pasta.
+| Script | Lê | Produz |
+|---|---|---|
+| `00_profiling.py` | CSV bruto | diagnóstico da sujeira da base (saída no terminal) |
+| `01_tratamento.py` | CSV bruto | `propostas_credito_tratado.csv`, via `pipeline/tratamento.py` |
+| `02_comparacao_metricas.py` | CSV tratado | comparação das duas definições de valor perdido (`definicao_metricas.md`) |
+| `03_diagnostico_funil.py` | CSV tratado | números que sustentam `04_respostas_parte1.md` |
+| `05_teste_significancia.py` | CSV tratado | teste z das diferenças de conversão da Pergunta 2 |
+
+Os arquivos `*_output.txt` versionados são a saída exata desses comandos; rodar de novo deve reproduzi-los.
 
 ---
 
@@ -583,7 +616,7 @@ python -m pytest parte3_extracao_ia/testes -v
 Algumas limitações foram mantidas explicitamente na entrega:
 
 - as estimativas financeiras dependem de premissas e representam oportunidades, não previsões;
-- a queda observada de conversão não foi submetida a teste de significância estatística;
+- a queda observada de conversão não é estatisticamente significativa ao nível de 5% (p ≈ 0,10);
 - coortes recentes podem estar imaturas, exigindo cautela em comparações temporais;
 - associação entre características e contratação não implica causalidade;
 - o relatório semanal utiliza uma leitura retrospectiva por `data_entrada` e não reconstrói o status historicamente conhecido em cada semana;
@@ -593,7 +626,9 @@ Algumas limitações foram mantidas explicitamente na entrega:
 - determinados campos apresentaram erros recorrentes nos modelos locais;
 - o schema atual possui apenas `presente`, `ausente` e `conflitante`;
 - informações declaradas por uma parte, mas não verificadas documentalmente, ainda não possuem um estado próprio no schema;
-- a implementação da API Anthropic foi testada estruturalmente, mas não executada contra a API real.
+- a implementação da API Anthropic foi testada estruturalmente, mas não executada contra a API real;
+- o schema tipado da Parte 3 foi validado contra a saída histórica, mas ainda não reexecutado contra o modelo;
+- a acurácia de valor da Parte 3 (63,6%) indica que a extração precisa de revisão humana antes de uso.
 
 Uma evolução considerada para o schema seria adicionar um quarto estado:
 
@@ -616,6 +651,7 @@ Durante o projeto, sugestões produzidas por IA foram verificadas contra dados, 
 Alguns erros encontrados durante o desenvolvimento levaram a mudanças concretas, incluindo:
 
 - correção da validação entre `status` e `valor` na extração estruturada;
+- tipagem dos campos numéricos e de data da extração, após o relatório mostrar números com texto em volta passando pela validação;
 - melhoria da normalização utilizada pelo avaliador;
 - criação de testes de regressão para erros encontrados durante execuções reais;
 - revisão crítica das estimativas e recomendações produzidas na análise do funil;
@@ -650,7 +686,8 @@ O tempo inclui análise dos dados, implementação, testes, investigação de er
 Uma versão direcionada à liderança comercial, sem necessidade de abrir o código, está disponível em:
 
 ```text
-RESUMO_EXECUTIVO.md
+RESUMO_EXECUTIVO.pdf   (1 página, para leitura e envio)
+RESUMO_EXECUTIVO.md    (mesmo conteúdo, fonte editável)
 ```
 
 O documento consolida os principais achados do funil, oportunidades identificadas, recomendações e premissas utilizadas.
