@@ -139,6 +139,7 @@ bari-case/
 ├── DIARIO.md
 ├── PLANO.md
 ├── RESUMO_EXECUTIVO.md
+├── RESUMO_EXECUTIVO.pdf
 ├── requirements.txt
 └── README.md
 ```
@@ -681,7 +682,8 @@ O tempo inclui análise dos dados, implementação, testes, investigação de er
 Uma versão direcionada à liderança comercial, sem necessidade de abrir o código, está disponível em:
 
 ```text
-RESUMO_EXECUTIVO.md
+RESUMO_EXECUTIVO.pdf   (1 página, para leitura e envio)
+RESUMO_EXECUTIVO.md    (mesmo conteúdo, fonte editável)
 ```
 
 O documento consolida os principais achados do funil, oportunidades identificadas, recomendações e premissas utilizadas.
