@@ -7,7 +7,7 @@ Evidência completa em `02_diagnostico_funil.py` / `diagnostico_output.txt`.
 ## 1. Onde o funil perde mais valor?
 
 | Etapa | Propostas perdidas | Valor perdido | % do total perdido |
-|---|---|---|---|
+|---|---:|---:|---:|
 | 3 — Análise de crédito | 1.799 | **R$ 703,0 mi** | **35,1%** |
 | 4 — Avaliação do imóvel | 1.267 | R$ 497,0 mi | 24,8% |
 | 2 — Lead | 984 | R$ 375,0 mi | 18,7% |
@@ -16,16 +16,21 @@ Evidência completa em `02_diagnostico_funil.py` / `diagnostico_output.txt`.
 
 **Etapa 3 (Análise de crédito) é o maior ponto de perda**, tanto em quantidade de propostas
 quanto em valor — não é só "onde mais gente desiste", é onde o ticket médio das perdidas
-(R$ 390.798) também é ligeiramente acima da média geral (R$ 384.244), então não tem efeito
+(R$ 390.798) também é ligeiramente acima da média geral (R$ 384.244), então não há efeito
 de "perde muita gente, mas de ticket pequeno" disfarçando o problema.
 
 Olhando por **motivo** de perda, um achado que contraria a leitura mais óbvia: somando
 `Sem retorno` (31,5% do valor) e `Desistiu` (29,3%), **60,8% do valor perdido é
-desengajamento do cliente — não reprovação de crédito** (17,6%). Cruzando etapa × status,
-na própria etapa 3 as três causas (desistiu, reprovada crédito, sem retorno) aparecem quase
-empatadas (614 / 608 / 577 propostas) — ou seja, mesmo no gargalo mais caro do funil, o
-problema não é predominantemente "a política de crédito reprova demais", é também (e talvez
-mais) "o cliente esfria/some enquanto espera".
+desengajamento do cliente — não reprovação de crédito** (17,6%).
+
+Cruzando etapa × status, na própria etapa 3 as três causas (`Desistiu`, `Reprovada crédito`
+e `Sem retorno`) aparecem quase empatadas: **614 / 608 / 577 propostas**, respectivamente.
+
+Ou seja, mesmo no gargalo mais caro do funil, o problema não é predominantemente
+"a política de crédito reprova demais". Existe também uma parcela relevante de propostas
+que sai por desistência ou falta de retorno.
+
+---
 
 ## 2. A percepção da liderança se confirma?
 
@@ -33,99 +38,220 @@ mais) "o cliente esfria/some enquanto espera".
 
 **Parcialmente confirmada — com ressalvas importantes.**
 
-**Conversão caiu?** Sim, mas de forma modesta, não abrupta:
-- 2024 (ano cheio): 20,4% | 2025 (jan–out, período maduro): 18,7% → queda de **1,7 p.p.**
-- 1º semestre de 2025: 19,3% | 2º semestre (jul–out): 16,9% → a queda parece estar
-  **acelerando no período mais recente**
-- Tendência linear mês a mês: -0,078 p.p./mês (leve, mas consistente com direção de queda)
+### Conversão caiu?
 
-Excluí novembro e dezembro/2025 desse cálculo porque `tempo_analise_dias` chega a 78 dias —
-propostas muito recentes podem não ter tido tempo hábil de fechar, o que inflaria uma queda
-artificial nesses meses (censura à direita). Mesmo maduro, o sinal de queda é real, mas
-**moderado**, não uma queda brusca — vale tratar como sinal de atenção, não como crise.
+Sim, existe um sinal de queda nos dados, mas sua magnitude é moderada.
 
-**Canal de correspondentes não está performando?** Sim, isso está bem confirmado:
-- Conversão do canal Correspondente: **14,3%**, contra 20,7%–22,3% dos outros 4 canais —
-  a diferença é grande e consistente ao longo de quase todos os meses da série (a maioria
-  entre 8% e 18%, sempre abaixo dos outros canais).
-- **Mas atenção ao que a liderança pode estar presumindo errado**: o volume do canal
-  Correspondente não está encolhendo — pelo contrário, sua participação no mix cresceu de
-  26,5% (2024) para 28,5% (2025). Ou seja, o canal não está "perdendo força" em volume,
-  está **crescendo em participação e arrastando a conversão geral para baixo** justamente
-  por isso. É um problema de qualidade do canal, não de abandono do canal.
+- Conversão de 2024: **20,4%**
+- Conversão de 2025, considerando meses maduros de janeiro a outubro: **18,7%**
+- Diferença: **-1,7 ponto percentual**
+- 1º semestre de 2025: **19,3%**
+- Julho a outubro de 2025: **16,9%**
+- Tendência linear estimada: aproximadamente **-0,078 p.p. por mês**
 
-**Confiança nessa resposta:** moderada. A amostra mensal é pequena em alguns meses (ex:
-70–27 propostas em nov/dez de 2025), o que aumenta ruído estatístico na cauda da série. A
-tendência de queda de conversão é consistente mas não é grande o suficiente para afirmar com
-certeza alta que é uma mudança estrutural — poderia também ser sazonalidade não observada em
-só ~2 anos de dados. O achado do canal Correspondente é mais robusto (diferença grande,
-padrão estável ao longo do tempo).
+Novembro e dezembro foram excluídos dessa comparação porque existem propostas recentes
+que ainda podem não ter tido tempo suficiente para chegar ao final do funil. O campo
+`tempo_analise_dias` chega a aproximadamente 78 dias, portanto incluir esses meses poderia
+reduzir artificialmente a conversão observada por efeito de maturação da coorte.
+
+O período de julho a outubro apresenta conversão inferior ao primeiro semestre, o que
+reforça o sinal de queda. Entretanto, a série disponível não é suficiente para concluir
+que existe uma aceleração estrutural dessa queda.
+
+A leitura mais defensável é: **há sinal de deterioração, mas ele é moderado**, não uma
+queda brusca. Vale tratar como sinal de atenção, não como crise.
+
+### Canal de correspondentes não está performando?
+
+Os dados confirmam uma **conversão observada inferior nos Correspondentes**:
+
+- Conversão do canal Correspondente: **14,3%**, contra aproximadamente **20,7%–22,3%**
+  dos demais canais.
+- A diferença aparece de forma recorrente ao longo da série mensal.
+- A participação do canal Correspondente no mix aumentou de **26,5% em 2024 para
+  28,5% em 2025**.
+
+Com maior participação de um canal que apresenta menor conversão observada, aumenta também
+sua influência sobre a conversão agregada.
+
+Os dados, porém, **não permitem atribuir essa diferença diretamente à qualidade do canal**.
+Correspondentes podem receber propostas com distribuições diferentes de score, LTV, ticket
+ou outras características. Portanto, a diferença observada deve ser investigada antes de
+ser interpretada como falha operacional do canal.
+
+**Confiança nessa resposta: moderada.**
+
+A tendência de queda da conversão é consistente, mas a série cobre aproximadamente dois
+anos e não permite separar completamente efeitos estruturais de possíveis efeitos de
+sazonalidade.
+
+O achado descritivo do canal Correspondente é mais consistente, pois a diferença observada
+é maior e aparece ao longo do tempo. Ainda assim, esta análise não controla simultaneamente
+as demais características das propostas.
+
+---
 
 ## 3. Quais características mais se associam à contratação?
 
-Ranqueado por força do efeito na conversão (maior variação entre categorias = mais associado):
+Para comparar características com escalas diferentes, usei como medida descritiva a
+**amplitude da taxa de contratação entre grupos** de cada variável.
 
-| Variável | Faixa/categoria com melhor conversão | Faixa/categoria com pior conversão | Amplitude |
-|---|---|---|---|
-| **Score de crédito** | >750: **31,6%** | ≤500: 1,2% | **30,4 p.p.** — de longe o maior efeito |
-| **LTV** | 40–50%: 23,0% | >60% (fora da política): **12,6%** | 10,4 p.p. |
-| **Canal de origem** | Parceria: 22,3% | Correspondente: 14,3% | 8,0 p.p. |
-| **Cliente recorrente** | Sim: 23,5% | Não: 18,4% | 5,1 p.p. |
-| **Tipo de imóvel** | Terreno: 21,1% | Casa: 18,2% | 2,9 p.p. |
-| **Ticket (valor solicitado)** | Q1 (menor): 20,8% | Q4 (maior): 17,5% | 3,3 p.p. |
-| **Prazo** | 181–240 meses: 20,7% | 121–180: 18,8% | 1,9 p.p. |
+| Característica | Grupo com maior conversão | Grupo com menor conversão | Amplitude observada |
+|---|---:|---:|---:|
+| **Score de crédito** | >750: **31,6%** | ≤500: 1,2% | **30,4 p.p.** |
+| **LTV** | 40–50%: 23,0% | >60%: **12,6%** | **10,4 p.p.** |
+| **Canal de origem** | Parceria: 22,3% | Correspondente: 14,3% | **8,0 p.p.** |
+| **Cliente recorrente** | Sim: 23,5% | Não: 18,4% | **5,1 p.p.** |
+| **Ticket** | Q1: 20,8% | Q4: 17,5% | **3,3 p.p.** |
+| **Tipo de imóvel** | Terreno: 21,1% | Casa: 18,2% | **2,9 p.p.** |
+| **Prazo** | 181–240 meses: 20,7% | 121–180 meses: 18,8% | **1,9 p.p.** |
 
-`score_credito` domina isoladamente — é o fator mais associado à contratação, e por uma
-margem grande. `LTV` confirma a lógica da política: propostas acima do limite de 60%
-convertem quase metade do que as na faixa 40–50%. Região (UF) tem alguma variação (GO 23,4%
-vs RJ 17,6%) mas com volumes menores por estado, então tratei como sinal mais fraco/menos
-confiável que os cinco primeiros.
+Pela métrica utilizada, **score de crédito apresenta a maior associação descritiva com
+contratação** entre as características analisadas.
 
-## 4. Três recomendações priorizadas
+A diferença entre propostas com score acima de 750 e aquelas com score até 500 chega a
+**30,4 pontos percentuais**, amplitude muito superior às demais variáveis.
 
-### 1ª prioridade — Reduzir "sem retorno" e "desistência" com follow-up ativo na análise de crédito
-**O quê:** SLA de resposta mais curto e contato proativo (não passivo) durante a etapa 3,
-que hoje concentra o maior volume de `Sem retorno` (577) e `Desistiu` (614) combinados.
+LTV e canal de origem aparecem em seguida.
 
-**Impacto estimado:** se 10% das propostas hoje perdidas por `Sem retorno` + `Desistiu`
-(3.131 propostas) passassem a contratar, seriam ~313 propostas adicionais × ticket médio
-(R$ 384 mil) ≈ **R$ 120 milhões** em valor de crédito adicional capturado ao longo do
-período da base (~2 anos).
+É importante separar **associação de causalidade**. Essa análise compara grupos de forma
+descritiva e univariada. Ela não controla simultaneamente score, LTV, canal, ticket e demais
+características.
 
-**Premissa assumida:** 10% é uma estimativa conservadora de melhoria por intervenção de
-processo (SLA/cadência), não uma medição — não há dado de "motivo de sem retorno/desistência"
-na base para calibrar melhor. É o número mais frágil das três recomendações, mas o maior
-volume de propostas afetadas também torna qualquer ganho, mesmo pequeno, financeiramente
-relevante.
+Portanto, esses resultados ajudam a identificar segmentos que merecem investigação e
+priorização, mas não demonstram que alterar isoladamente uma dessas características
+causaria o aumento observado na contratação.
 
-### 2ª prioridade — Reformar o canal Correspondente (treinamento + triagem de lead na entrada)
-**O quê:** o canal converte a 14,3% contra 20,7%–22,3% dos demais, e está crescendo em
-participação (26,5% → 28,5%). Ação: padronizar critério de qualificação do lead antes do
-envio ao Bari (reduzir volume de propostas mal ajustadas desde a origem) e/ou treinar
-parceiros correspondentes nos critérios de política de crédito.
+---
 
-**Impacto estimado:** se a conversão do canal subisse de 14,3% para a média dos outros 4
-canais (~21,4%), seriam 1.772 × (21,4% − 14,3%) ≈ **126 propostas adicionais** × ticket
-médio ≈ **R$ 48 milhões** em valor de crédito adicional capturado.
+## 4. Três recomendações acionáveis
 
-**Premissa assumida:** que a diferença de conversão é majoritariamente qualidade/origem do
-lead, não composição de perfil de cliente diferente por canal — não testei isso
-estatisticamente (ex: correspondente poderia atrair clientes com score/LTV
-sistematicamente piores por natureza do canal, e não por falha operacional). Vale validar
-antes de investir pesado na reforma.
+### 1ª prioridade — Follow-up ativo durante a Análise de Crédito
 
-### 3ª prioridade — Pré-filtro de LTV acima de 60% antes da etapa de análise de crédito
-**O quê:** 981 propostas (15,3% da base) já entram com LTV acima do limite de política e
-convertem a apenas 12,6% — abaixo até da faixa >750 de score inverso. Hoje elas consomem
-capacidade de análise na etapa mais cara do funil (etapa 3) antes de serem reprovadas.
-Ação: sinalizar/barrar essas propostas já na simulação (etapa 1) ou orientar renegociação de
-valor solicitado/imóvel antes de formalizar entrada.
+**O quê:** criar acompanhamento específico para propostas na etapa 3 que apresentam risco
+de saída por `Sem retorno` ou `Desistiu`, priorizando inicialmente propostas de maior valor
+solicitado.
 
-**Impacto estimado:** não é ganho direto de conversão (a maioria dessas propostas
-provavelmente não fecharia de qualquer forma), mas libera capacidade operacional na etapa 3
-— o maior gargalo do funil (35,1% do valor perdido, 1.799 propostas) — para propostas com
-LTV saudável, potencialmente acelerando o ciclo (`tempo_analise_dias`) de todas as demais.
+Na etapa 3, esses dois motivos somam:
 
-**Premissa assumida:** que o gargalo de etapa 3 é, ao menos em parte, de capacidade/tempo de
-analista (não só de critério de aprovação) — não há dado direto de capacidade/headcount na
-base para confirmar isso; é uma inferência a partir do volume concentrado na etapa.
+- **1.191 propostas**
+- aproximadamente **R$ 471,7 milhões em valor solicitado**
+
+Isso concentra a ação no mesmo estágio identificado como maior ponto de perda financeira
+do funil.
+
+**Impacto estimado:** em um cenário de sensibilidade no qual uma intervenção de processo
+recuperasse **10% do valor associado a essas propostas**, a oportunidade seria equivalente
+a aproximadamente:
+
+- **119 propostas**
+- **R$ 47,2 milhões** em crédito adicional ao longo do período da base (~2 anos)
+
+**Premissa assumida:** os 10% representam uma hipótese de sensibilidade para dimensionar a
+oportunidade. Não há experimento na base que permita afirmar que uma ação de follow-up
+causaria essa recuperação.
+
+Portanto, **R$ 47,2 milhões não é uma previsão de receita nem um efeito causal medido**;
+deve ser interpretado como dimensão de oportunidade sob essa hipótese.
+
+---
+
+### 2ª prioridade — Revisar o canal Correspondente (qualificação + investigação do perfil das propostas)
+
+**O quê:** o canal converte a **14,3%**, contra aproximadamente **20,7%–22,3%** dos demais,
+e sua participação aumentou de **26,5% para 28,5%**.
+
+A primeira ação deveria ser investigar se existem diferenças sistemáticas no perfil das
+propostas recebidas pelo canal.
+
+Em paralelo, podem ser avaliadas ações como:
+
+- padronização dos critérios de qualificação do lead;
+- revisão da triagem antes do envio ao Bari;
+- treinamento dos parceiros correspondentes nos critérios da política de crédito.
+
+**Impacto estimado:** se a conversão do canal subisse de **14,3%** para aproximadamente
+a média observada nos demais canais (**~21,4%**), isso equivaleria a cerca de:
+
+- **126 propostas adicionais**
+- aproximadamente **R$ 48 milhões** em crédito adicional
+
+Esse cálculo representa um **cenário de oportunidade**, não uma previsão de resultado.
+
+**Premissa assumida:** uma parcela da diferença de conversão pode estar relacionada à
+qualificação/origem do lead.
+
+Essa hipótese **não foi testada de forma multivariada**. O canal Correspondente pode receber
+clientes com score, LTV ou outros perfis sistematicamente diferentes dos demais.
+
+Essa composição deve ser investigada antes de atribuir a diferença a uma falha operacional
+ou realizar investimento relevante no canal.
+
+---
+
+### 3ª prioridade — Validar e operacionalizar a política de LTV de 60%
+
+**O quê:** **981 propostas (15,3% da base)** apresentam LTV calculado acima de 60%, apesar
+de o enunciado informar que o LTV máximo permitido é 60%.
+
+Entretanto, **124 dessas propostas aparecem como `Contratada`**.
+
+Entre essas contratações com LTV acima de 60%:
+
+- LTV mínimo: **60,07%**
+- LTV mediano: **63,29%**
+- LTV médio: **64,15%**
+- LTV máximo: **79,0%**
+
+A distribuição também mostra que o fenômeno não está restrito apenas a valores muito
+próximos de 60%, portanto não parece ser explicado apenas por arredondamento.
+
+Antes de implementar qualquer bloqueio automático, é necessário validar com as áreas de
+negócio e crédito:
+
+1. se o LTV calculado na análise (`valor_solicitado / valor_imovel`) corresponde exatamente
+   à medida utilizada pela política;
+2. se existem exceções formais à regra de 60%;
+3. se o valor solicitado ou o valor do imóvel pode ser renegociado durante o processo;
+4. se há alguma diferença entre o valor disponível na base e o valor utilizado na decisão
+   final de crédito.
+
+**Impacto esperado:** a primeira entrega dessa recomendação não é necessariamente aumento
+de conversão, mas **redução de ambiguidade operacional e prevenção de uma automação baseada
+em uma interpretação possivelmente incompleta da regra**.
+
+Depois da validação, a política pode ser operacionalizada de forma adequada por meio de
+alerta, renegociação ou bloqueio na entrada, conforme a regra real utilizada pelo negócio.
+
+**Premissa assumida:** o LTV foi calculado como `valor_solicitado / valor_imovel`, conforme
+a interpretação adotada a partir dos campos disponíveis e do dicionário de dados.
+
+A base, isoladamente, **não explica por que existem 124 contratos acima de 60%**. Portanto,
+exceção de política, renegociação, diferença de definição ou problema semântico dos dados
+permanecem hipóteses e não conclusões.
+
+---
+
+## Conclusão da Parte 1
+
+A análise confirma que o maior ponto de perda financeira está na **Análise de Crédito**,
+responsável por **35,1% do valor perdido**.
+
+A percepção da liderança também encontra suporte parcial nos dados: existe um sinal de
+queda da conversão e o canal Correspondente apresenta conversão observada inferior aos
+demais, mas a magnitude da tendência e as causas da diferença exigem cautela.
+
+Entre as características analisadas, **score de crédito apresenta a maior associação
+descritiva com contratação**, seguido por LTV e canal de origem. Essas relações não devem
+ser interpretadas como efeitos causais.
+
+As recomendações priorizam:
+
+1. atuar sobre desistência e falta de retorno no maior gargalo financeiro;
+2. investigar e melhorar a operação do canal Correspondente sem assumir previamente que
+   o canal é a causa da diferença;
+3. esclarecer a aparente inconsistência entre a política de LTV de 60% e os contratos
+   observados antes de automatizar qualquer regra de bloqueio.
+
+Os impactos financeiros apresentados são **cenários de oportunidade condicionados às
+premissas utilizadas**, e não previsões de receita.

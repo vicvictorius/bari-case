@@ -15,7 +15,7 @@ A análise do funil encontrou uma conversão geral de **19,39%**.
 Os principais achados foram:
 
 - **Análise de crédito (etapa 3)** concentra **35,1% do valor perdido**, aproximadamente **R$ 703 milhões**.
-- **60,8%** dessa perda está associada a desistência ou falta de retorno do cliente, e não diretamente à reprovação de crédito.
+- Considerando as perdas do funil por motivo, **60,8% do valor perdido** está associado a desistência ou falta de retorno do cliente, e não diretamente à reprovação de crédito.
 - A conversão caiu de **20,4% para 18,7%** no período analisado. A queda existe nos dados, mas é moderada e não foi submetida a teste de significância estatística.
 - O canal **Correspondente** apresentou conversão de **14,3%**, contra aproximadamente **20–22%** nos demais canais, enquanto aumentou sua participação no volume.
 - **Score de crédito** apresentou a maior associação observada com contratação, com amplitude de **30,4 pontos percentuais** entre grupos analisados, seguido por LTV e canal de origem.
@@ -26,21 +26,23 @@ Essas relações são **associações observadas nos dados**, não evidência de
 
 **1. Follow-up ativo durante a análise de crédito**
 
-A maior perda financeira ocorre na etapa 3 e grande parte está relacionada a desistência ou ausência de retorno.
+A etapa 3 concentra **1.191 propostas** perdidas por `Sem retorno` ou `Desistiu`, que representam aproximadamente **R$ 471,7 milhões** em valor solicitado.
 
-O potencial associado ao problema foi estimado em aproximadamente **R$ 120 milhões**, dependendo das premissas de recuperação utilizadas.
+Em um cenário de sensibilidade no qual uma intervenção de processo recuperasse 10% desse valor, a oportunidade seria equivalente a aproximadamente **119 propostas e R$ 47,2 milhões** em crédito adicional ao longo do período analisado.
 
 **2. Revisar o canal Correspondente**
 
 O canal apresentou conversão inferior aos demais e participação crescente no volume.
 
-A oportunidade associada foi estimada em aproximadamente **R$ 48 milhões**, condicionada às premissas utilizadas na análise.
+Em um cenário no qual sua conversão alcançasse a média observada nos outros canais, a oportunidade associada seria de aproximadamente **126 propostas e R$ 48 milhões** em crédito adicional.
 
-**3. Antecipar o filtro de LTV**
+**3. Validar e operacionalizar a política de LTV de 60%**
 
-Como a política limita o LTV a **60%**, propostas incompatíveis com esse critério podem ser identificadas antes de consumirem etapas mais avançadas do processo.
+A base contém **981 propostas com LTV calculado acima de 60%**, das quais **124 aparecem como contratadas**.
 
-> Os valores apresentados são estimativas de oportunidade e não previsões de receita.
+Antes de implementar um bloqueio automático, é necessário validar se o LTV disponível na base representa exatamente a mesma medida utilizada pela política de crédito e investigar possíveis exceções, renegociações ou mudanças de condição durante o processo.
+
+> Os valores apresentados são cenários de oportunidade condicionados às premissas da análise, não previsões de receita nem efeitos causais medidos.
 
 ---
 
@@ -71,10 +73,13 @@ flowchart TD
     E["17 laudos de avaliação<br/>TXT"] --> F["Parte 3<br/>Extração com LLM"]
 
     F --> G["Ollama<br/>Qwen3 1.7B / Qwen2.5 7B"]
+
     G --> H["Validação estruturada<br/>Pydantic"]
+
     H --> I["JSON estruturado"]
 
     J["Gabarito de referência<br/>Gold Standard"] --> K["Avaliador"]
+
     I --> K
 
     K --> L["Métricas de acurácia<br/>status + valor"]
@@ -84,10 +89,11 @@ O primeiro fluxo busca manter consistência entre análise exploratória e autom
 
 ---
 
-## Estrutura do projeto
+# Estrutura do projeto
 
 ```text
 bari-case/
+│
 ├── dados_brutos/
 │   ├── Propostas_credito.csv
 │   └── laudos_avaliacao/
@@ -109,8 +115,8 @@ bari-case/
 │   └── registro_tratamento.md
 │
 ├── parte2_automacao/
-│   ├── relatorio_semanal.py
 │   ├── README.md
+│   ├── relatorio_semanal.py
 │   ├── saidas/
 │   └── testes/
 │
@@ -341,10 +347,10 @@ O projeto possui testes automatizados para as Partes 2 e 3.
 Na execução final:
 
 ```text
-Parte 2: 34 testes aprovados
+Parte 2: 35 testes aprovados
 Parte 3: 31 testes aprovados
 
-Total: 65 testes aprovados
+Total: 66 testes aprovados
 ```
 
 A suíte completa foi executada com:
@@ -356,7 +362,7 @@ python -m pytest -v
 e terminou com:
 
 ```text
-65 passed
+66 passed
 ```
 
 Os testes cobrem, entre outros pontos:
@@ -498,7 +504,7 @@ Algumas limitações foram mantidas explicitamente na entrega:
 - determinados campos apresentaram erros recorrentes nos modelos locais;
 - o schema atual possui apenas `presente`, `ausente` e `conflitante`;
 - informações declaradas por uma parte, mas não verificadas documentalmente, ainda não possuem um estado próprio no schema;
-- a implementação Anthropic não foi utilizada para produzir um benchmark real contra os modelos locais.
+- a implementação da API Anthropic foi testada estruturalmente, mas não executada contra a API real.
 
 Uma evolução considerada para o schema seria adicionar um quarto estado:
 
@@ -520,12 +526,10 @@ Durante o projeto, sugestões produzidas por IA foram verificadas contra dados, 
 
 Alguns erros encontrados durante o desenvolvimento levaram a mudanças concretas, incluindo:
 
-- correção da ordem de normalização de categorias;
-- validação de `status="presente"` sem `valor`;
+- correção da validação entre `status` e `valor` na extração estruturada;
 - melhoria da normalização utilizada pelo avaliador;
-- criação de testes de regressão;
-- documentação de limitações semânticas dos modelos;
-- comparação entre modelos locais executados em hardwares diferentes.
+- criação de testes de regressão para erros encontrados durante execuções reais;
+- revisão crítica das estimativas e recomendações produzidas na análise do funil.
 
 O uso de IA, os erros encontrados, os aprendizados e a autocrítica estão registrados em:
 
@@ -594,4 +598,4 @@ Nenhum dado real de cliente do Banco Bari foi utilizado.
 
 GitHub: [vicvictorius](https://github.com/vicvictorius)
 
-Repositório do projeto: [bari-case](https://github.com/vicvictorius/bari-case)
+Repositório do projeto: [bari-case](https://github.com/vicvictorius)
