@@ -44,6 +44,46 @@ Como a política limita o LTV a **60%**, propostas incompatíveis com esse crit�
 
 ---
 
+## Arquitetura da solução
+
+A solução foi organizada em dois fluxos principais:
+
+- **dados estruturados**, utilizados no diagnóstico e na automação do funil de crédito;
+- **dados não estruturados**, utilizados na extração de informações dos laudos com LLMs.
+
+O tratamento das propostas foi centralizado em um pipeline compartilhado, permitindo que o diagnóstico da Parte 1 e o relatório automatizado da Parte 2 utilizem as mesmas regras de preparação dos dados.
+
+```mermaid
+flowchart TD
+    A["Dados brutos<br/>propostas_credito.csv"] --> B["Pipeline de tratamento<br/>pipeline/tratamento.py"]
+
+    B --> C["Parte 1<br/>Diagnóstico do funil"]
+    B --> D["Parte 2<br/>Relatório semanal automatizado"]
+
+    C --> C1["Métricas do funil"]
+    C --> C2["Análise de conversão"]
+    C --> C3["Recomendações de negócio"]
+
+    D --> D1["Validação dos dados"]
+    D --> D2["Cálculo das métricas"]
+    D --> D3["Relatório HTML + logs"]
+
+    E["17 laudos de avaliação<br/>TXT"] --> F["Parte 3<br/>Extração com LLM"]
+
+    F --> G["Ollama<br/>Qwen3 1.7B / Qwen2.5 7B"]
+    G --> H["Validação estruturada<br/>Pydantic"]
+    H --> I["JSON estruturado"]
+
+    J["Gabarito de referência<br/>Gold Standard"] --> K["Avaliador"]
+    I --> K
+
+    K --> L["Métricas de acurácia<br/>status + valor"]
+```
+
+O primeiro fluxo busca manter consistência entre análise exploratória e automação, enquanto o segundo adiciona validação estrutural e uma etapa explícita de avaliação das extrações produzidas pelos modelos.
+
+---
+
 ## Estrutura do projeto
 
 ```text
