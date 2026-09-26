@@ -136,6 +136,8 @@ bari-case/
 │   ├── README.md
 │   ├── relatorio_acuracia_qwen25-7b.md
 │   ├── saida_extracao_local_qwen25-7b.json
+│   ├── relatorio_acuracia_qwen25-7b-tipado-prompt-v2-normalizado.md
+│   ├── saida_extracao_local_qwen25-7b-tipado-prompt-v2.json
 │   └── testes/
 │
 ├── DIARIO.md
@@ -370,44 +372,56 @@ Esses problemas foram corrigidos e transformados em testes de regressão.
 
 Posteriormente, o mesmo experimento foi executado em uma máquina com NVIDIA RTX 3050 de 4 GB utilizando **Qwen2.5 7B**.
 
-Resultado:
+| Execução — Qwen2.5 7B | Acurácia de status | Acurácia de valor condicional | Laudos processados |
+|---|---:|---:|---:|
+| Schema antigo (`valor` sempre texto) | 92,9% (158/170) | 63,6% (91/143) | 17/17 |
+| Schema tipado | 84,7% | 77,3% (99/128) | 16/17 |
+| **Schema tipado + prompt V2 — resultado atual** | **90,6%** | **80,9% (114/141)** | **16/17** |
 
-```text
-17/17 laudos processados
-92,9% de acurácia de status  (158/170)
-63,6% de acurácia de valor   (91/143)
-```
+A acurácia de valor condicional evoluiu de **63,6% → 77,3% → 80,9%**.
+A execução intermediária com schema tipado está registrada em [`parte3_extracao_ia/decisoes.md`](parte3_extracao_ia/decisoes.md); sua saída não está versionada.
+Os resultados do schema antigo e do V2 possuem saída e relatório versionados.
 
-As duas métricas respondem perguntas diferentes:
+As métricas respondem perguntas diferentes:
 
 - **status**: o modelo percebeu corretamente se o campo estava presente, ausente ou conflitante?
-- **valor**: quando o campo estava presente, o conteúdo extraído estava certo?
+- **valor condicional**: quando gabarito e extração indicam presença, o conteúdo extraído estava certo?
 
-Para quem vai usar o dado, a métrica que importa é a de **valor**. Ela mostra que o extrator ainda não está pronto para uso sem revisão:
+### Resultado atual — schema tipado + prompt V2
 
-| Campo | Status | Valor |
+| Campo | Status | Valor condicional — métrica conservadora |
 |---|---:|---:|
+| `tipo_imovel` | 88,2% | 86,7% |
+| `endereco` | 88,2% | 26,7% |
+| `area_privativa_m2` | 94,1% | 100,0% |
+| `area_total_m2` | 94,1% | 100,0% |
+| `ano_construcao` | 88,2% | 100,0% |
+| `valor_avaliacao_reais` | 94,1% | 100,0% |
+| `matricula` | 94,1% | 33,3% |
+| `onus` | 76,5% | 50,0% |
 | `data_vistoria` | 94,1% | 100,0% |
-| `responsavel_tecnico` | 100,0% | 94,1% |
-| `tipo_imovel` | 94,1% | 93,8% |
-| `valor_avaliacao_reais` | 100,0% | 64,7% |
-| `ano_construcao` | 88,2% | 54,5% |
-| `matricula` | 100,0% | 50,0% |
-| `area_privativa_m2` | 70,6% | 50,0% |
-| `area_total_m2` | 94,1% | 42,9% |
-| `onus` | 88,2% | 33,3% |
-| `endereco` | 100,0% | 29,4% |
+| `responsavel_tecnico` | 94,1% | 100,0% |
 
-Os erros de valor têm duas origens, que o relatório permite separar linha a linha:
+A métrica principal de valor permanece **conservadora** e considera os campos
+em que gabarito e extração indicam `presente`. Portanto, os **80,9% (114/141)**
+são uma acurácia condicional, que deve ser lida junto dos **16/17 laudos processados**.
 
-1. **Formato:** números com texto em volta, como `"Possui R$ 455.000,00"`, `"id_146.00"` ou `".275.000,00"` (esperado 1.275.000,00). Isso motivou o schema tipado descrito abaixo.
-2. **Conteúdo:** troca entre área privativa e área total, e ônus ou endereço resumidos de forma diferente do gabarito. Em campos de texto livre, parte da divergência é do critério de comparação exata, que é rígido de propósito (`Belo Horizonte/MG` ≠ `Belo Horizonte - MG`).
+A equivalência textual normalizada de `endereco` + `matricula` é de
+**76,7% (23/30)**. Essa métrica é complementar, cobre apenas esses dois campos
+e não substitui a métrica conservadora nem é diretamente comparável ao resultado
+geral, pois utiliza outro conjunto de campos e outro denominador.
 
-A diferença de status para o Qwen3 1.7B foi de apenas **0,5 ponto percentual**, e a amostra tem 17 laudos. Por isso, a comparação entre modelos não foi reduzida a uma conclusão de que o modelo maior é universalmente superior.
+O extrator ainda requer **revisão humana**, principalmente nos campos textuais:
+`endereco` apresenta **26,7%**, `matricula` **33,3%** e `onus` **50,0%** de acurácia
+de valor pela métrica conservadora.
+
+Na execução com schema antigo, os erros incluíam números com texto em volta,
+trocas entre área privativa e área total e divergências em campos textuais.
+Esses resultados motivaram a tipagem dos campos e o refinamento do prompt.
 
 ## Schema tipado: garantia de formato
 
-Na execução acima, todo `valor` era texto, então o formato do envelope (`valor`, `status`, `trecho_bruto`) era garantido, mas o conteúdo não. A correção foi tipar os campos:
+Na execução com schema antigo, todo `valor` era texto, então o formato do envelope (`valor`, `status`, `trecho_bruto`) era garantido, mas o conteúdo não. A correção foi tipar os campos:
 
 | Campo | Tipo |
 |---|---|
@@ -420,13 +434,16 @@ A conversão é feita por um parser determinístico (`normalizacao.py`), não pe
 
 Aplicando o schema tipado à saída histórica do Qwen2.5 7B, **13 dos 17 laudos seriam barrados** (40 valores com texto em volta) em vez de aceitos. Isso está coberto por teste.
 
-> O schema tipado ainda **não foi reexecutado contra o modelo**. Não há como afirmar, sem rodar, quanto o retry e a restrição de tipo recuperam desses 13 laudos.
+O schema tipado foi reexecutado contra o modelo, primeiro com o prompt anterior e depois com o prompt V2. Ambas as execuções processaram **16/17 laudos**, com acurácia de valor condicional de **77,3% (99/128)** e **80,9% (114/141)**, respectivamente. A tipagem garante o formato dos campos, mas não dispensa a avaliação do conteúdo nem a revisão humana.
 
-Os resultados completos estão em:
+Os campos textuais agora também passam por validação: símbolos conhecidos nas extremidades são removidos e prefixos artificiais são rejeitados para acionar o retry. O efeito no modelo real depende de uma nova execução; os resultados históricos abaixo ainda não medem essa validação. As regras e limitações estão em [`decisoes.md`](parte3_extracao_ia/decisoes.md#validação-dos-campos-textuais-na-saída).
 
-```text
-parte3_extracao_ia/relatorio_acuracia_qwen25-7b.md
-```
+Os relatórios versionados estão em:
+
+- [Schema antigo](parte3_extracao_ia/relatorio_acuracia_qwen25-7b.md)
+- [Schema tipado + prompt V2 — resultado atual](parte3_extracao_ia/relatorio_acuracia_qwen25-7b-tipado-prompt-v2-normalizado.md)
+
+A [saída estruturada do V2](parte3_extracao_ia/saida_extracao_local_qwen25-7b-tipado-prompt-v2.json) também está versionada.
 
 As decisões de modelagem, erros encontrados e limitações estão documentadas em:
 
@@ -448,21 +465,21 @@ Na execução final:
 
 ```text
 Parte 2: 37 testes aprovados
-Parte 3: 79 testes aprovados
+Parte 3: 107 testes aprovados
 
-Total: 116 testes aprovados
+Total: 144 testes aprovados
 ```
 
 A suíte completa foi executada com:
 
 ```bash
-python -m pytest -v
+python -m pytest -q -p no:cacheprovider
 ```
 
 e terminou com:
 
 ```text
-116 passed
+144 passed
 ```
 
 Os testes cobrem, entre outros pontos:
@@ -483,6 +500,7 @@ Os testes cobrem, entre outros pontos:
 - avaliação das extrações;
 - validação Pydantic;
 - conversão estrita de números, anos e datas no schema tipado;
+- limpeza de símbolos nas extremidades dos campos textuais, rejeição de prefixos artificiais e preservação dos valores textuais do gabarito;
 - rejeição das saídas com texto em volta observadas na execução real;
 - parsing das respostas do modelo;
 - retry de respostas inválidas;
@@ -622,13 +640,15 @@ Algumas limitações foram mantidas explicitamente na entrega:
 - o relatório semanal utiliza uma leitura retrospectiva por `data_entrada` e não reconstrói o status historicamente conhecido em cada semana;
 - a base não contém histórico completo de mudanças de status;
 - a avaliação de IA utiliza apenas 17 laudos;
+- o prompt V2 foi refinado a partir dos erros dos mesmos 17 laudos usados na avaliação. Isso introduz viés de ajuste e torna o resultado otimista como estimativa de desempenho em laudos novos; os 100% de acurácia de valor nas áreas são um resultado dentro da amostra, não uma demonstração de generalização;
+- uma avaliação sem esse viés de reutilização exigiria laudos nunca usados para ajustar o prompt, reservados desde o início ou obtidos posteriormente. Com apenas 17 laudos, uma separação deixaria pouquíssimos casos de teste; por isso, ela não foi realizada;
 - o rascunho inicial do gabarito da Parte 3 teve apoio de IA e foi posteriormente revisado manualmente por uma única pessoa, não constituindo um *gold standard* humano totalmente independente;
 - determinados campos apresentaram erros recorrentes nos modelos locais;
 - o schema atual possui apenas `presente`, `ausente` e `conflitante`;
 - informações declaradas por uma parte, mas não verificadas documentalmente, ainda não possuem um estado próprio no schema;
 - a implementação da API Anthropic foi testada estruturalmente, mas não executada contra a API real;
-- o schema tipado da Parte 3 foi validado contra a saída histórica, mas ainda não reexecutado contra o modelo;
-- a acurácia de valor da Parte 3 (63,6%) indica que a extração precisa de revisão humana antes de uso.
+- o resultado atual da Parte 3, com schema tipado + prompt V2, processou 16/17 laudos e obteve 80,9% (114/141) de acurácia de valor condicional;
+- os campos textuais ainda exigem revisão humana: endereco 26,7%, matricula 33,3% e onus 50,0% na métrica conservadora de valor.
 
 Uma evolução considerada para o schema seria adicionar um quarto estado:
 

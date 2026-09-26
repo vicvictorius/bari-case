@@ -1235,6 +1235,23 @@ pipeline para `area_privativa_m2` ou `area_total_m2`.
 
 ### Limitações
 
+O prompt V2 foi refinado com base nos erros dos mesmos 17 laudos usados na
+avaliação, incluindo os casos dos laudos 5, 7 e 15 descritos acima. Isso
+introduz **viés de ajuste do prompt**: o resultado é otimista como estimativa
+do desempenho em laudos novos, pois os documentos avaliados também orientaram
+as regras do prompt.
+
+Os 100% de acurácia de valor em `area_privativa_m2` e `area_total_m2` são um
+resultado **dentro da amostra**, após o refinamento orientado por seus erros.
+Eles mostram o desempenho nessa amostra e nos casos elegíveis à métrica
+condicional, sem demonstrar generalização para documentos novos.
+
+Uma medição sem esse viés de reutilização exigiria avaliar o prompt em laudos
+que nunca tivessem sido usados para ajustá-lo, reservados desde o início ou
+obtidos posteriormente. Com apenas 17 laudos, essa separação deixaria
+pouquíssimos casos de teste; por isso, não foi realizada. Uma avaliação futura
+deve manter o prompt fixo durante a medição em laudos novos.
+
 O experimento utiliza um modelo generativo local e apenas uma execução de cada
 configuração. Portanto, a diferença observada não deve ser interpretada como
 garantia estatística de melhoria em execuções futuras.
@@ -1245,7 +1262,9 @@ que falhou foi diferente:
 - schema tipado / prompt anterior: `laudo_16.txt`;
 - prompt refinado: `laudo_4.txt`.
 
-Isso evidencia variabilidade de geração do modelo.
+Os laudos ausentes diferem entre as execuções, mas as mensagens finais de
+erro não foram preservadas. Sem elas, não é possível atribuir essas falhas
+à variabilidade de geração do modelo nem a uma regra específica do schema.
 
 A acurácia de valor também é condicional: considera apenas casos em que
 gabarito e extração classificam o campo como `presente`. Portanto, não deve ser
@@ -1257,13 +1276,15 @@ O experimento indica que validação estrutural e orientação semântica resolv
 classes diferentes de erro.
 
 O schema tipado impede que formatos estruturalmente inválidos sejam aceitos,
-enquanto o refinamento do prompt melhora a decisão sobre qual informação do
-documento pertence a cada campo.
+enquanto o refinamento do prompt apresentou melhora na amostra usada para
+ajustá-lo, ao orientar qual informação do documento pertence a cada campo.
+Essa observação ainda exige avaliação em laudos novos para verificar a
+generalização.
 
 Os próximos gargalos observados estão principalmente nos campos textuais,
-como `matricula` e `endereco`, nos quais diferenças de representação reduzem
-a métrica de exact match mesmo quando parte ou toda a informação semântica
-está preservada.
+como `matricula` e `endereco`. As divergências incluem variações de
+representação, defeitos de saída e perda de informação; esses casos são
+distinguidos na análise complementar e na validação textual descritas abaixo.
 
 ## Avaliação complementar de campos textuais
 
@@ -1279,8 +1300,13 @@ Exemplos incluem:
 
 - `Curitiba/PR` versus `Curitiba-PR`;
 - `145.230 (7º RGI)` versus `145.230 do 7º RGI`;
-- presença de wrappers artificiais produzidos pelo modelo;
 - diferenças de pontuação e separadores.
+
+Também foram encontrados defeitos de saída, como `strconv:45.981`,
+`value: 9.876, 2º RGI do Recife` e `The 201.443`. Esses prefixos artificiais
+não são variações legítimas de representação. A normalização complementar
+pode removê-los para comparar valores, mas não corrige o JSON entregue ao
+consumidor nem comprova que a saída original esteja adequada para uso.
 
 Por esse motivo, foi adicionada ao avaliador uma métrica complementar e
 determinística de equivalência textual.
@@ -1324,8 +1350,11 @@ campos aplicáveis à comparação de valor, enquanto a segunda considera soment
 
 ### Auditoria das equivalências
 
-A normalização recuperou 14 casos que falhavam na comparação conservadora por
-diferenças de representação.
+A normalização recuperou 14 casos que falhavam na comparação conservadora.
+Esse conjunto inclui tanto variações de representação quanto defeitos de
+saída removidos pela normalização, como símbolos soltos e prefixos artificiais.
+Portanto, os casos recuperados não devem ser descritos apenas como diferenças
+superficiais de formato.
 
 Casos com perda real de informação continuaram sendo tratados como
 divergências.
@@ -1346,7 +1375,8 @@ Foram mantidas duas perspectivas de avaliação:
 1. comparação conservadora, utilizada como métrica principal e comparável aos
    benchmarks anteriores;
 2. equivalência textual normalizada, utilizada como métrica complementar para
-   analisar diferenças de representação em campos textuais.
+   analisar equivalências após normalização, incluindo variações de
+   representação e remoção de defeitos de saída conhecidos.
 
 Não foram introduzidos fuzzy matching, distância de Levenshtein, embeddings ou
 LLM-as-a-judge. Para o conjunto atual de 17 laudos, a abordagem determinística
@@ -1366,3 +1396,94 @@ Assim, a avaliação final passa a separar quatro dimensões:
 2. acurácia de status;
 3. acurácia condicional de valor;
 4. equivalência textual complementar.
+
+## Validação dos campos textuais na saída
+
+Os campos textuais de `CampoExtraido` passam a usar a função pura
+`normalizar_texto`, em `normalizacao.py`, durante a validação do schema.
+A regra se aplica a `valor`; `trecho_bruto` permanece intacto para auditoria.
+
+- Espaços externos e os marcadores `:`, `>`, `-` e `]->` nas extremidades
+  são removidos. A limpeza é limitada a esses marcadores conhecidos;
+  pontuação interna, parênteses e colchetes do conteúdo são preservados.
+- Prefixos `strconv`, `value:`, `name:`, `id_` e `The ` no início são
+  rejeitados, sem diferenciar maiúsculas e minúsculas, inclusive após a
+  limpeza dos símbolos. A rejeição gera erro de validação e aciona o retry
+  já existente, em vez de adivinhar o conteúdo após o prefixo.
+- Um valor que fica vazio após a limpeza continua proibido quando o status
+  é `presente`. As regras dos campos numéricos e de data são preservadas.
+
+Exemplos observados no V2:
+
+| Saída original | Tratamento no schema |
+|---|---|
+| `: 184.772 do 14º CRI de São Paulo` | `184.772 do 14º CRI de São Paulo` |
+| `]-> 70.008` | `70.008` |
+| `strconv:45.981` | Rejeição e retry |
+| `The 201.443` | Rejeição e retry |
+| `value: 9.876, 2º RGI do Recife` | Rejeição e retry |
+
+Essa validação cobre padrões conhecidos de defeito de saída, sem garantir
+correção semântica de qualquer texto. A regra de `The `, em particular, pode
+rejeitar um nome legítimo que comece assim; é uma restrição explícita desta
+validação, que deve ser reavaliada com novos documentos.
+
+Os testes cobrem os exemplos acima, textos legítimos (inclusive endereço
+iniciado por número), preservação da evidência, validação do gabarito inteiro
+sem alterar seus valores textuais e retry com cliente simulado.
+
+Validação desta alteração: **107 testes da Parte 3** e **144 testes na suíte
+completa** passaram. A validação foi executada com `python -m pytest
+parte3_extracao_ia/testes -q -p no:cacheprovider` e `python -m pytest -q
+-p no:cacheprovider`, respectivamente.
+
+O efeito sobre a acurácia e a cobertura do modelo real **só será conhecido
+com uma nova execução**. Os relatórios e JSONs históricos foram preservados;
+seus resultados não medem esta nova validação textual. A métrica conservadora
+e a métrica complementar do avaliador não foram alteradas.
+
+## Registro das falhas das execuções com schema tipado
+
+As mensagens finais de erro das execuções históricas não foram preservadas,
+e o autor confirmou que não dispõe mais delas. Não foi possível recuperar
+o erro de validação nem identificar uma regra do schema que tenha barrado
+cada laudo.
+
+| Execução | Laudo ausente | Evidência disponível | Causa da falha |
+|---|---|---|---|
+| Schema tipado, prompt anterior | `laudo_16.txt` | Registro na seção do experimento deste documento; saída não versionada | Desconhecida: mensagem final não preservada |
+| Schema tipado + prompt V2 | `laudo_4.txt` | Ausência na saída versionada e indicação no relatório V2 | Desconhecida: mensagem final não preservada |
+
+Fontes do V2:
+
+- [`saida_extracao_local_qwen25-7b-tipado-prompt-v2.json`](saida_extracao_local_qwen25-7b-tipado-prompt-v2.json)
+- [`relatorio_acuracia_qwen25-7b-tipado-prompt-v2-normalizado.md`](relatorio_acuracia_qwen25-7b-tipado-prompt-v2-normalizado.md)
+
+O fluxo de `extrator_local.py` registra erros de comunicação com o Ollama,
+JSON inválido e validação Pydantic. Ao esgotar as tentativas, inclui o último
+erro na exceção, que é enviada ao log. A ausência de um laudo na saída não
+permite distinguir essas causas. Portanto, não há evidência suficiente para
+afirmar que essas duas falhas foram rejeições deliberadas de valores
+inválidos pelo schema.
+
+O `.gitignore` exclui `*.log`, e o extrator não grava atualmente um artefato
+estruturado com os detalhes das falhas. Uma nova execução pode gerar novas
+evidências, mas não recupera nem comprova a causa das falhas históricas.
+
+### Melhoria proposta para próximas execuções
+
+Propõe-se uma alteração pequena em `extrator_local.py`: além de contabilizar
+as falhas, acumular o nome do arquivo e a mensagem final da exceção de cada
+laudo que esgotou as tentativas e gravar essa lista ao lado do JSON de saída,
+com o nome `falhas_<nome_do_arquivo_de_saida>.json`. Por exemplo, para
+`saida_extracao_local.json`, gerar `falhas_saida_extracao_local.json`.
+
+Cada registro deve conter `arquivo_origem` e `ultimo_erro`. O arquivo deve
+ser gravado também quando a lista estiver vazia, para não manter falhas de
+uma execução anterior. A saída parcial válida e o retorno de erro de uma
+execução incompleta devem ser preservados. Esse JSON não é excluído pela
+regra `*.log` e pode ser versionado junto dos resultados para auditoria.
+
+Esta é uma **proposta ainda não implementada** nesta tarefa documental.
+Os resultados históricos, o extrator e as métricas de avaliação permanecem
+inalterados.

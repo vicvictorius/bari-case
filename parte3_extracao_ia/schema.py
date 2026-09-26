@@ -16,7 +16,7 @@ from typing import Any, ClassVar, Optional
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
-from normalizacao import parse_ano, parse_data, parse_numero
+from normalizacao import normalizar_texto, parse_ano, parse_data, parse_numero
 
 
 class StatusCampo(str, Enum):
@@ -47,6 +47,13 @@ class CampoExtraido(BaseModel):
         description="Trecho literal do laudo que sustenta o status. "
         "Obrigatório quando status != presente.",
     )
+
+    @field_validator("valor", mode="after")
+    @classmethod
+    def validar_texto(cls, valor: Any) -> Any:
+        # Após a conversão de tipo, números e datas das subclasses já não
+        # são strings e seguem somente as regras de seus próprios parsers.
+        return normalizar_texto(valor) if isinstance(valor, str) else valor
 
     @model_validator(mode="after")
     def trecho_obrigatorio_se_nao_presente(self) -> "CampoExtraido":

@@ -13,9 +13,11 @@ import sys
 from pathlib import Path
 from unittest.mock import MagicMock
 
+import pytest
+
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from extrator_local import extrair_um_laudo, processar_diretorio  # noqa: E402
+from extrator_local import MAX_TENTATIVAS, extrair_um_laudo, processar_diretorio  # noqa: E402
 
 
 def _resposta_ollama(payload: dict) -> dict:
@@ -215,3 +217,35 @@ def test_processamento_parcial_retorna_resultados_e_quantidade_de_falhas(
     # 1 chamada do primeiro laudo +
     # 3 tentativas do segundo laudo.
     assert client.chat.call_count == 4
+
+
+def test_prefixo_textual_artificial_aciona_retry_com_feedback():
+    invalido = dict(REGISTRO_VALIDO)
+    invalido["matricula"] = {
+        "valor": "strconv:45.981", "status": "presente", "trecho_bruto": "45.981"
+    }
+    client = MagicMock()
+    client.chat.side_effect = [
+        _resposta_ollama(invalido),
+        _resposta_ollama(REGISTRO_VALIDO),
+    ]
+
+    registro = extrair_um_laudo(client, "modelo-fake", "texto", "laudo_teste.txt")
+
+    assert registro.matricula.valor == "123"
+    assert client.chat.call_count == 2
+    feedback = client.chat.call_args_list[1].kwargs["messages"][-1]["content"]
+    assert "prefixo artificial" in feedback
+    assert "matricula" in feedback
+
+
+def test_prefixo_textual_persistente_nao_entrega_registro():
+    invalido = dict(REGISTRO_VALIDO)
+    invalido["matricula"] = {"valor": "value: 123", "status": "presente"}
+    client = MagicMock()
+    client.chat.return_value = _resposta_ollama(invalido)
+
+    with pytest.raises(RuntimeError, match="prefixo artificial"):
+        extrair_um_laudo(client, "modelo-fake", "texto", "laudo_teste.txt")
+
+    assert client.chat.call_count == MAX_TENTATIVAS
