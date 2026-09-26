@@ -1064,3 +1064,104 @@ do próprio gabarito
 ```
 
 em vez de resumir todo o comportamento do sistema em uma única métrica.
+
+---
+
+# Schema tipado: do formato do envelope ao formato do valor
+
+## O problema
+
+O enunciado pergunta como garantir que a saída sai sempre no mesmo
+formato. Até aqui, a garantia cobria só o envelope: todo campo tinha
+`valor`, `status` e `trecho_bruto`, mas `valor` era `str`. Qualquer texto
+passava.
+
+O relatório do Qwen2.5 7B mostrou isso na prática. Estas saídas foram
+aceitas pela validação:
+
+| Laudo | Campo | Saída do modelo | Esperado |
+|---|---|---|---|
+| laudo_5 | `valor_avaliacao_reais` | `.275.000,00` | 1.275.000,00 |
+| laudo_5 | `area_total_m2` | `.8` | 48.000 |
+| laudo_6 | `area_privativa_m2` | `Possui 61m²` | 61 |
+| laudo_3 | `valor_avaliacao_reais` | `logar(395.500,00) = 395500.00` | 395.500 |
+| laudo_14 | `ano_construcao` | `: aproximadamente 18 anos` | ausente |
+
+O `avaliador.py` já tinha uma limpeza de alguns desses padrões
+(`_limpar_wrapper_modelo`). Isso resolvia a **medição**, mas não a
+**saída**: quem consumisse o JSON continuaria recebendo o lixo. Limpar no
+avaliador também tem um risco: pode esconder da métrica um problema que
+continua existindo no dado.
+
+## A decisão
+
+Tipar os campos no schema e converter em código determinístico:
+
+| Campo | Tipo | Regra |
+|---|---|---|
+| `area_privativa_m2`, `area_total_m2`, `valor_avaliacao_reais` | `float` | positivo; aceita `R$` antes e `m²` depois, nada mais |
+| `ano_construcao` | `int` | 4 dígitos, entre 1800 e o ano atual |
+| `data_vistoria` | `date` | `AAAA-MM-DD` ou `DD/MM/AAAA` |
+
+O parser (`normalizacao.py`) é **estrito de propósito**. Ele não procura
+um número dentro de uma frase. Se procurasse, `.275.000,00` poderia virar
+275.000, um valor plausível e errado. É o mesmo princípio de todo o
+extrator: melhor assumir que não sabe do que chutar.
+
+Quando a conversão falha, a validação Pydantic levanta erro, e o extrator
+já tinha o caminho para isso: devolver o erro ao modelo e tentar de novo,
+até 3 vezes. Depois disso, o laudo falha de forma explícita.
+
+Duas regras complementares:
+
+- **Status diferente de `presente` descarta o valor.** Um campo ausente ou
+  conflitante não tem um valor confiável. No laudo_17, o modelo colocou as
+  duas áreas em `valor` (`"cabeçalho: 95 m², tabela interna: 92 m²"`); a
+  evidência já está no `trecho_bruto`, que continua obrigatório.
+- **O tipo também vai para o modelo.** `json_schema_campos()` em
+  `schema.py` gera o JSON schema com `number` e `integer`, usado pelo tool
+  schema da Anthropic e pelo `format` do Ollama. Antes cada extrator tinha
+  sua cópia do schema, com `valor` sempre `string`.
+
+## Convenção de separadores
+
+Um ponto seguido de exatamente 3 dígitos é lido como separador de milhar
+(`218.000` = 218 mil; `1.450` = 1.450 m²). Os demais pontos são decimais
+(`78.40`, `96.3`). Essa convenção segue os laudos da amostra, mas tem um
+caso ambíguo: `92.500` viraria 92.500, não 92,5. Em laudos brasileiros, a
+leitura como milhar é a mais provável.
+
+## Efeito medido na saída histórica
+
+Aplicando o schema tipado ao `saida_extracao_local_qwen25-7b.json`:
+
+- dos 70 valores numéricos ou de data marcados como `presente`, **40 seriam
+  rejeitados** por terem texto em volta;
+- **13 dos 17 laudos** falhariam na validação e iriam para retry.
+
+Esse número está fixado em teste (`test_saida_historica_qwen25_seria_barrada_pelo_schema_tipado`).
+
+O `gabarito.json` foi regenerado pelo `construir_gabarito.py` com os
+novos tipos. Os valores não mudaram, só a representação (`"78.40"` virou
+`78.4`). O relatório de acurácia foi regenerado e as métricas continuaram
+as mesmas.
+
+## O que ainda não se sabe
+
+O schema tipado **não foi reexecutado contra o modelo**. Três resultados
+são possíveis, e só a execução diz qual acontece:
+
+1. a restrição de tipo e o retry corrigem o formato, e a acurácia de valor sobe;
+2. o modelo passa a emitir números no formato certo, mas errados (por
+   exemplo, a troca entre área privativa e total continua);
+3. o retry não converge e mais laudos falham de forma explícita.
+
+O terceiro caso não é regressão: é o extrator dizendo que não sabe, em
+vez de entregar lixo com aparência de dado.
+
+## Acurácia de valor no relatório
+
+O avaliador passou a reportar a **acurácia geral de valor** ao lado da de
+status. Na execução do Qwen2.5 7B: status 92,9% (158/170), valor 63,6%
+(91/143). A primeira mede se o modelo percebeu a existência do campo; a
+segunda mede se o dado está certo, que é o que importa para quem usa.
