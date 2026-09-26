@@ -294,6 +294,535 @@ SCRIPT_FILTROS = """
 """
 
 
+# Notas metodológicas permanentes emitidas por calcular(). Usadas só para decidir
+# ONDE cada aviso aparece no HTML; a regra que gera os avisos continua em calcular().
+# Qualquer aviso fora desta lista é tratado como alerta dinâmico e sobe para o topo.
+AVISOS_METODOLOGICOS = (
+    "Análise retrospectiva por data de entrada: os desfechos são os disponíveis no arquivo, "
+    "inclusive os posteriores à semana selecionada. Não representa o status conhecido naquela data.",
+    "Coortes recentes podem estar imaturas. Conversão observada não é previsão de conversão final "
+    "nem taxa de contratos assinados durante a semana.",
+)
+
+# Apresentação apenas. Paleta INSPIRADA na identidade visual do site do Banco Bari,
+# com valores aproximados (não oficiais). Sem fontes ou recursos externos.
+ESTILO = """/* ==========================================================
+   Paleta INSPIRADA na referência visual do site do Banco Bari.
+   Valores aproximados a partir de captura de tela — não são
+   as cores oficiais da marca.
+   ========================================================== */
+:root {
+    --canvas: #f2f5f9;
+    --surface: #ffffff;
+    --sunken: #f5f7fb;
+    --line: #dde3ec;
+    --line-strong: #7a879c;
+    --ink: #0f1f3d;
+    --muted: #55627a;
+    --navy: #0b1f44;
+    --on-navy: #ffffff;
+    --on-navy-muted: #b9c6dd;
+    --blue-vivid: #2e90ff;
+    --blue: #0f5fd6;
+    --blue-soft: #e8f0fd;
+    --data-1: #34568f;
+    --data-track: #e9eef5;
+    --warn: #8a5a00;
+    --warn-soft: #fdf3d8;
+    --warn-line: #e2c26f;
+    --critical: #b3261e;
+
+    --s1: 4px; --s2: 8px; --s3: 12px; --s4: 16px;
+    --s6: 24px; --s8: 32px; --s10: 40px;
+    --r-sm: 4px; --r-md: 8px; --r-lg: 12px;
+    --pad: 40px;
+}
+
+* { box-sizing: border-box; }
+
+body {
+    margin: 0;
+    background: var(--canvas);
+    color: var(--ink);
+    font: 15px/1.5 "Source Sans 3", "Segoe UI", system-ui, sans-serif;
+}
+
+main {
+    max-width: 1180px;
+    margin: var(--s8) auto;
+    padding: 0 var(--pad) var(--s8);
+    background: var(--surface);
+    border-radius: var(--r-lg);
+    box-shadow: 0 0 0 1px var(--line);
+    overflow: hidden;
+}
+
+td, .kpi-valor, .barra-cabecalho strong, .periodo-datas, .meta-periodo dd {
+    font-variant-numeric: tabular-nums;
+}
+
+/* ---------- 1. Cabeçalho ---------- */
+.cabecalho {
+    margin: 0 calc(-1 * var(--pad));
+    padding: var(--s8) var(--pad) var(--s6);
+    background: var(--navy);
+    color: var(--on-navy);
+    border-bottom: 3px solid var(--blue-vivid);
+}
+
+.selo {
+    font-size: 12px;
+    line-height: 16px;
+    font-weight: 700;
+    letter-spacing: .08em;
+    color: var(--blue-vivid);
+}
+
+h1 {
+    font-size: 30px;
+    line-height: 36px;
+    font-weight: 600;
+    margin: var(--s1) 0 var(--s4);
+}
+
+.periodo {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--s3) var(--s8);
+    align-items: center;
+}
+
+.periodo-principal {
+    border: 1px solid rgba(185, 198, 221, .45);
+    border-radius: var(--r-md);
+    padding: var(--s2) var(--s4);
+}
+
+.periodo-rotulo {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--on-navy-muted);
+}
+
+.periodo-datas {
+    font-size: 22px;
+    line-height: 28px;
+    font-weight: 700;
+}
+
+.meta-periodo {
+    display: grid;
+    grid-template-columns: auto auto;
+    gap: 2px var(--s4);
+    margin: 0;
+    font-size: 13px;
+    line-height: 19px;
+}
+
+.meta-periodo dt { color: var(--on-navy-muted); }
+.meta-periodo dd { margin: 0; font-weight: 600; }
+
+/* ---------- 2. Alertas dinâmicos (quando existirem) ---------- */
+.alertas { margin-top: var(--s6); display: grid; gap: var(--s2); }
+
+.alerta {
+    display: flex;
+    gap: var(--s3);
+    align-items: baseline;
+    padding: var(--s3) var(--s4);
+    border: 1px solid var(--warn-line);
+    border-radius: var(--r-md);
+    background: var(--warn-soft);
+    font-size: 14px;
+    line-height: 21px;
+}
+
+.alerta-icone {
+    flex: none;
+    color: var(--warn);
+    font-weight: 700;
+}
+
+.alerta p { margin: 0; }
+
+.alerta strong { color: var(--warn); }
+
+/* ---------- Zonas ---------- */
+.zona-rotulo {
+    display: flex;
+    align-items: center;
+    gap: var(--s3);
+    margin: var(--s10) 0 var(--s4);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    color: var(--muted);
+}
+
+.zona-rotulo::after {
+    content: "";
+    flex: 1;
+    border-top: 1px solid var(--line);
+}
+
+.zona-rotulo .marca {
+    padding: 2px var(--s2);
+    border-radius: var(--r-sm);
+    background: var(--blue-soft);
+    color: var(--blue);
+    letter-spacing: .02em;
+}
+
+.zona-rotulo .marca.fixa {
+    background: var(--sunken);
+    color: var(--muted);
+    border: 1px solid var(--line);
+}
+
+/* ---------- 3. Filtros ---------- */
+.filtros {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: var(--s2) var(--s8);
+    align-items: end;
+    padding: var(--s4) var(--s6);
+    border-radius: var(--r-md);
+    background: var(--sunken);
+    border: 1px solid var(--line);
+}
+
+.filtros h2 {
+    grid-column: 1 / -1;
+    margin: 0;
+    font-size: 16px;
+    line-height: 22px;
+}
+
+.filtros fieldset {
+    border: 0;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    gap: var(--s3);
+    flex-wrap: wrap;
+    align-items: end;
+}
+
+.filtros label {
+    display: flex;
+    flex-direction: column;
+    gap: var(--s1);
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.filtros select,
+.filtros button {
+    font: inherit;
+    font-size: 14px;
+    font-weight: 400;
+    min-height: 40px;
+    padding: 0 var(--s3);
+    border: 1px solid var(--line-strong);
+    border-radius: var(--r-md);
+    background: var(--surface);
+    color: var(--ink);
+    max-width: 100%;
+}
+
+.filtros select { min-width: 200px; }
+
+.filtros button {
+    cursor: pointer;
+    font-weight: 600;
+    color: var(--blue);
+    border-color: var(--blue);
+}
+
+.filtros fieldset:disabled select,
+.filtros fieldset:disabled button { opacity: .55; cursor: not-allowed; }
+
+.filtros p {
+    margin: 0;
+    font-size: 13px;
+    line-height: 19px;
+    color: var(--muted);
+}
+
+#situacao-filtros {
+    color: var(--ink);
+    font-weight: 600;
+}
+
+:focus-visible {
+    outline: 3px solid var(--blue);
+    outline-offset: 2px;
+}
+
+/* ---------- 4. KPIs ---------- */
+.kpis {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: var(--s4);
+    margin-top: var(--s6);
+}
+
+.kpi-grupo h3 {
+    margin: 0 0 var(--s2);
+    font-size: 13px;
+    line-height: 18px;
+    font-weight: 700;
+    color: var(--muted);
+}
+
+.kpi-linha { display: grid; gap: var(--s3); }
+.kpi-grupo.volume .kpi-linha { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.kpi-grupo.valores .kpi-linha { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.kpi-grupo { display: grid; grid-template-columns: 150px 1fr; gap: var(--s4); align-items: center; }
+.kpi-grupo h3 { margin: 0; }
+
+.kpi {
+    min-width: 0;
+    padding: var(--s4);
+    border: 1px solid var(--line);
+    border-radius: var(--r-md);
+    background: var(--surface);
+    display: flex;
+    flex-direction: column;
+    gap: var(--s1);
+}
+
+.kpi-label {
+    font-size: 14px;
+    line-height: 20px;
+    font-weight: 600;
+    color: var(--ink);
+}
+
+.kpi-valor {
+    display: block;
+    font-size: 34px;
+    line-height: 40px;
+    font-weight: 700;
+    color: var(--ink);
+    white-space: nowrap;
+}
+
+.kpi-dinheiro { font-size: 28px; }
+
+.kpi small { font-size: 13px; line-height: 18px; color: var(--muted); }
+
+/* ---------- Seções e tabelas ---------- */
+h2 {
+    font-size: 19px;
+    line-height: 26px;
+    margin: var(--s8) 0 var(--s1);
+}
+
+.sub {
+    margin: 0 0 var(--s4);
+    font-size: 13px;
+    line-height: 19px;
+    color: var(--muted);
+    max-width: 80ch;
+}
+
+.tabela { overflow-x: auto; }
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+    line-height: 20px;
+}
+
+th, td {
+    text-align: right;
+    padding: 10px var(--s3);
+    border-bottom: 1px solid var(--line);
+    white-space: nowrap;
+}
+
+th:first-child, td:first-child {
+    text-align: left;
+    white-space: normal;
+}
+
+th {
+    white-space: normal;
+    font-size: 12px;
+    line-height: 16px;
+    font-weight: 700;
+    color: var(--muted);
+    border-bottom: 2px solid var(--line);
+    vertical-align: bottom;
+}
+
+/* coluna "Semana selecionada" = a única que responde aos filtros */
+#resumo-semanal th:nth-child(2),
+#resumo-semanal td:nth-child(2) {
+    background: var(--blue-soft);
+}
+
+#resumo-semanal th:nth-child(2) { color: var(--blue); }
+#resumo-semanal td:nth-child(2) { font-weight: 700; }
+
+/* ---------- 6. Perdas por etapa ---------- */
+.perdas td:first-child { white-space: nowrap; }
+.perdas {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: var(--s8);
+    align-items: start;
+}
+
+.grafico-perdas { margin: 0; }
+
+.barra-item + .barra-item { margin-top: var(--s4); }
+
+.barra-cabecalho {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--s4);
+    margin-bottom: 6px;
+    font-size: 14px;
+    line-height: 20px;
+}
+
+.barra-cabecalho span { font-weight: 600; }
+.barra-cabecalho strong { white-space: nowrap; }
+
+.barra-trilho {
+    width: 100%;
+    height: 10px;
+    overflow: hidden;
+    border-radius: var(--r-sm);
+    background: var(--data-track);
+}
+
+.barra-preenchimento {
+    height: 100%;
+    border-radius: inherit;
+    background: var(--data-1);
+}
+
+.barra-item small {
+    display: block;
+    margin-top: var(--s1);
+    font-size: 13px;
+    color: var(--muted);
+}
+
+.estado-vazio {
+    padding: var(--s4);
+    border: 1px dashed var(--line-strong);
+    border-radius: var(--r-md);
+    background: var(--sunken);
+}
+
+.estado-vazio p { margin: 2px 0 0; color: var(--muted); }
+
+/* ---------- 8. Metodologia ---------- */
+.metodologia {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--s8);
+    margin-top: var(--s10);
+    padding-top: var(--s6);
+    border-top: 1px solid var(--line);
+}
+
+.aviso {
+    padding: var(--s4) var(--s6);
+    border-radius: var(--r-md);
+    background: var(--blue-soft);
+    border: 1px solid #c9dbf6;
+    font-size: 14px;
+    line-height: 21px;
+}
+
+.aviso > strong { font-size: 16px; line-height: 22px; }
+.aviso ul { margin: var(--s2) 0 0; padding-left: 18px; }
+.aviso li + li { margin-top: var(--s2); }
+
+.definicoes h2 { margin-top: 0; font-size: 16px; line-height: 22px; }
+.definicoes p { font-size: 14px; line-height: 21px; margin: var(--s2) 0 0; }
+
+footer {
+    margin-top: var(--s8);
+    padding-top: var(--s4);
+    border-top: 1px solid var(--line);
+    font-size: 12px;
+    line-height: 18px;
+    color: var(--muted);
+}
+
+/* ---------- Responsivo ---------- */
+@media (max-width: 1000px) {
+    .kpis { grid-template-columns: 1fr; }
+    .perdas, .metodologia { grid-template-columns: 1fr; gap: var(--s6); }
+    .kpi-grupo { grid-template-columns: 1fr; gap: var(--s2); }
+    .filtros { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 640px) {
+    :root { --pad: 16px; }
+    main { margin: 0; border-radius: 0; box-shadow: none; }
+    .cabecalho { padding-top: var(--s6); }
+    h1 { font-size: 24px; line-height: 30px; }
+    .periodo-datas { font-size: 19px; }
+    .filtros { padding: var(--s4); }
+    .filtros label, .filtros select, .filtros button { width: 100%; }
+    .kpi-grupo.volume .kpi-linha { grid-template-columns: 1fr 1fr; }
+    .kpi-grupo.volume .kpi:last-child { grid-column: 1 / -1; }
+    .kpi-grupo.valores .kpi-linha { grid-template-columns: 1fr; }
+    .kpi-valor { font-size: 30px; line-height: 36px; }
+    .kpi-dinheiro { font-size: 24px; }
+    .barra-cabecalho { flex-direction: column; gap: 0; }
+    .zona-rotulo { flex-wrap: wrap; gap: var(--s2); }
+    .zona-rotulo::after { display: none; }
+    .zona-rotulo .marca { white-space: nowrap; }
+    /* primeira coluna fixa ao rolar a tabela */
+    .tabela td:first-child, .tabela th:first-child {
+        position: sticky; left: 0; background: var(--surface);
+        min-width: 140px; box-shadow: 1px 0 0 var(--line);
+    }
+    .tabela { margin: 0 calc(-1 * var(--pad)); padding: 0 var(--pad); }
+}
+
+/* ---------- Impressão / PDF A4 ---------- */
+@page { size: A4; margin: 14mm 12mm; }
+
+@media print {
+    :root { --pad: 0px; }
+    * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    body { background: #fff; font-size: 10.5pt; }
+    main { margin: 0; max-width: none; box-shadow: none; border-radius: 0; overflow: visible; }
+    .cabecalho { background: none; color: var(--ink); padding: 0 0 var(--s3); border-bottom: 3px solid var(--navy); }
+    .selo { color: var(--blue); }
+    .periodo-principal { border-color: var(--line); }
+    .periodo-rotulo, .meta-periodo dt { color: var(--muted); }
+    /* controles somem; o estado dos filtros (texto que o JS já atualiza) permanece */
+    .filtros h2, .filtros fieldset, .filtros noscript { display: none; }
+    .filtros { display: block; padding: var(--s2) var(--s3); background: none; }
+    .filtros p + p { margin-top: var(--s1); }
+    .kpis { gap: var(--s2); }
+    .kpi-grupo { grid-template-columns: 110px 1fr; gap: var(--s2); }
+    .kpi { padding: var(--s2) var(--s3); }
+    .kpi-valor { font-size: 22px; line-height: 28px; }
+    .kpi-dinheiro { font-size: 20px; }
+    .perdas { grid-template-columns: 1fr 1fr; gap: var(--s6); }
+    .metodologia { grid-template-columns: 1fr 1fr; }
+    th, td { padding: 6px var(--s2); }
+    .kpi, .alerta, .barra-item, tr, .aviso, .estado-vazio { break-inside: avoid; }
+    h2, .zona-rotulo { break-after: avoid; }
+    .perdas, .metodologia { break-inside: avoid; }
+    .tabela { overflow: visible; }
+}
+"""
+
+
 def tabela(cabecalhos: list[str], linhas: list[list], id_tabela: str | None = None) -> str:
     head = "".join(f"<th scope='col'>{escape(str(c))}</th>" for c in cabecalhos)
     body = "".join("<tr>" + "".join(f"<td>{escape(str(c))}</td>" for c in linha) + "</tr>" for linha in linhas)
@@ -417,6 +946,10 @@ def gerar_html(m: dict, fonte: str) -> str:
     cards = f"""
     <section class="kpis" aria-label="Indicadores da semana selecionada">
 
+      <div class="kpi-grupo volume">
+        <h3>Volume e conversão</h3>
+        <div class="kpi-linha">
+
         <article class="kpi">
             <span class="kpi-label">Propostas</span>
             <strong class="kpi-valor" id="kpi-total">
@@ -441,6 +974,13 @@ def gerar_html(m: dict, fonte: str) -> str:
             <small>contratadas / propostas</small>
         </article>
 
+        </div>
+      </div>
+
+      <div class="kpi-grupo valores">
+        <h3>Valores</h3>
+        <div class="kpi-linha">
+
         <article class="kpi kpi-largo">
             <span class="kpi-label">Crédito solicitado</span>
             <strong class="kpi-valor kpi-dinheiro" id="kpi-solicitado">
@@ -456,6 +996,9 @@ def gerar_html(m: dict, fonte: str) -> str:
             </strong>
             <small>valor solicitado</small>
         </article>
+
+        </div>
+      </div>
 
     </section>
     """
@@ -553,9 +1096,32 @@ def gerar_html(m: dict, fonte: str) -> str:
         ],
     )
 
+    # Mesmos textos e mesma regra de calcular(); muda só o lugar de exibição:
+    # notas permanentes em "Como interpretar", alertas dinâmicos no topo.
     avisos = "".join(
         f"<li>{escape(aviso)}</li>"
         for aviso in m["avisos"]
+        if aviso in AVISOS_METODOLOGICOS
+    )
+
+    alertas_dinamicos = [
+        aviso
+        for aviso in m["avisos"]
+        if aviso not in AVISOS_METODOLOGICOS
+    ]
+
+    alertas = (
+        '<section class="alertas" aria-label="Alertas do período">'
+        + "".join(
+            '<div class="alerta">'
+            '<span class="alerta-icone" aria-hidden="true">⚠</span>'
+            f"<p><strong>Atenção:</strong> {escape(aviso)}</p>"
+            "</div>"
+            for aviso in alertas_dinamicos
+        )
+        + "</section>"
+        if alertas_dinamicos
+        else ""
     )
 
     sem_perdas = (
@@ -564,7 +1130,7 @@ def gerar_html(m: dict, fonte: str) -> str:
         "<p>Não há propostas não contratadas para apresentar neste período.</p>"
         "</div>"
         if m["perdas"].empty
-        else grafico + perdas
+        else '<div class="perdas">' + grafico + perdas + "</div>"
     )
 
     sem_canais = (
@@ -588,304 +1154,7 @@ def gerar_html(m: dict, fonte: str) -> str:
 <title>Bari — Relatório semanal | {intervalo}</title>
 
 <style>
-* {{
-    box-sizing: border-box;
-}}
-
-body {{
-    margin: 0;
-    background: #eef2f4;
-    color: #193341;
-    font: 16px/1.6 system-ui, sans-serif;
-}}
-
-main {{
-    max-width: 1180px;
-    margin: 32px auto;
-    padding: 36px;
-    background: white;
-    border-top: 6px solid #14756b;
-    box-shadow: 0 8px 30px rgba(25, 51, 65, .06);
-}}
-
-h1 {{
-    font-size: 34px;
-    line-height: 1.2;
-    margin: 8px 0;
-}}
-
-h2 {{
-    font-size: 21px;
-    margin-top: 36px;
-}}
-
-.selo {{
-    font-size: 13px;
-    letter-spacing: 2px;
-    color: #14756b;
-    font-weight: bold;
-}}
-
-.sub {{
-    color: #50636d;
-}}
-
-.kpis {{
-    display: grid;
-    grid-template-columns: repeat(6, minmax(0, 1fr));
-    gap: 16px;
-    margin: 30px 0;
-}}
-
-.kpi {{
-    grid-column: span 2;
-    min-height: 140px;
-    padding: 20px;
-    border: 1px solid #d9e2e6;
-    border-radius: 12px;
-    background: #ffffff;
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-    box-shadow: 0 4px 16px rgba(25, 51, 65, .05);
-}}
-
-.kpi-largo {{
-    grid-column: span 3;
-}}
-
-.kpi-label {{
-    color: #50636d;
-    font-size: 12px;
-    font-weight: 750;
-    letter-spacing: .06em;
-    text-transform: uppercase;
-}}
-
-.kpi-valor {{
-    display: block;
-    margin: 8px 0;
-    color: #193341;
-    font-size: 32px;
-    line-height: 1.15;
-}}
-
-.kpi-dinheiro {{
-    font-size: 25px;
-}}
-
-.kpi small {{
-    color: #6b7c85;
-}}
-
-.filtros {{
-    margin-top: 28px;
-    padding: 20px 24px;
-    border: 1px solid #d9e2e6;
-    border-radius: 10px;
-    background: #f5f9f8;
-}}
-
-.filtros h2 {{
-    margin: 0 0 12px;
-}}
-
-.filtros fieldset {{
-    border: 0;
-    margin: 0;
-    padding: 0;
-    display: flex;
-    gap: 16px;
-    flex-wrap: wrap;
-    align-items: end;
-}}
-
-.filtros label {{
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-}}
-
-.filtros select,
-.filtros button {{
-    font: inherit;
-    padding: 9px 11px;
-    border: 1px solid #a8bbb9;
-    border-radius: 6px;
-    background: white;
-    color: #193341;
-    max-width: 100%;
-}}
-
-.filtros button {{
-    cursor: pointer;
-}}
-
-.filtros p {{
-    margin-bottom: 0;
-    font-size: 14px;
-}}
-
-.aviso {{
-    padding: 18px 24px;
-    background: #fff6dc;
-    border-left: 4px solid #bd8c20;
-    margin-top: 32px;
-    border-radius: 0 8px 8px 0;
-}}
-
-.aviso ul {{
-    padding-left: 18px;
-}}
-
-.tabela {{
-    overflow-x: auto;
-}}
-
-table {{
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 14px;
-}}
-
-th,
-td {{
-    text-align: right;
-    padding: 12px;
-    border-bottom: 1px solid #d9e2e6;
-}}
-
-th:first-child,
-td:first-child {{
-    text-align: left;
-}}
-
-th {{
-    background: #eaf3f1;
-}}
-
-.grafico-perdas {{
-    margin: 20px 0 28px;
-    padding: 24px;
-    border: 1px solid #d9e2e6;
-    border-radius: 10px;
-    background: #f8fafb;
-}}
-
-.barra-item + .barra-item {{
-    margin-top: 20px;
-}}
-
-.barra-cabecalho {{
-    display: flex;
-    justify-content: space-between;
-    gap: 20px;
-    margin-bottom: 7px;
-}}
-
-.barra-cabecalho span {{
-    font-weight: 650;
-}}
-
-.barra-cabecalho strong {{
-    white-space: nowrap;
-}}
-
-.barra-trilho {{
-    width: 100%;
-    height: 12px;
-    overflow: hidden;
-    border-radius: 999px;
-    background: #dfe8e7;
-}}
-
-.barra-preenchimento {{
-    height: 100%;
-    border-radius: inherit;
-    background: #14756b;
-}}
-
-.barra-item small {{
-    display: block;
-    margin-top: 5px;
-    color: #6b7c85;
-}}
-
-.estado-vazio {{
-    padding: 24px;
-    border: 1px dashed #a8bbb9;
-    border-radius: 8px;
-    background: #f8fafb;
-}}
-
-.estado-vazio p {{
-    margin-bottom: 0;
-    color: #50636d;
-}}
-
-footer {{
-    font-size: 13px;
-    color: #50636d;
-    margin-top: 36px;
-    padding-top: 20px;
-    border-top: 1px solid #d9e2e6;
-}}
-
-@media(max-width: 800px) {{
-    .kpis {{
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-    }}
-
-    .kpi,
-    .kpi-largo {{
-        grid-column: span 1;
-    }}
-}}
-
-@media(max-width: 600px) {{
-    main {{
-        margin: 0;
-        padding: 18px;
-    }}
-
-    h1 {{
-        font-size: 27px;
-    }}
-
-    .kpis {{
-        grid-template-columns: 1fr;
-    }}
-
-    .kpi,
-    .kpi-largo {{
-        grid-column: span 1;
-    }}
-
-    .barra-cabecalho {{
-        flex-direction: column;
-        gap: 2px;
-    }}
-}}
-
-@media print {{
-    body {{
-        background: white;
-    }}
-
-    main {{
-        margin: 0;
-        padding: 10px;
-        box-shadow: none;
-    }}
-
-    tr {{
-        break-inside: avoid;
-    }}
-
-    .filtros {{
-        display: none;
-    }}
-}}
+{ESTILO}
 </style>
 </head>
 
@@ -893,18 +1162,37 @@ footer {{
 
 <main>
 
+<header class="cabecalho">
+
 <div class="selo">
     BARI · AI &amp; DATA LAB · DADOS SINTÉTICOS
 </div>
 
 <h1>Relatório semanal do funil</h1>
 
-<p class="sub">
-    Entradas de {intervalo}
-    · referência {m['referencia']:%d/%m/%Y}
-</p>
+<div class="periodo">
+    <div class="periodo-principal">
+        <div class="periodo-rotulo">Entradas de</div>
+        <div class="periodo-datas">{intervalo}</div>
+    </div>
+    <dl class="meta-periodo">
+        <dt>Referência</dt>
+        <dd>{m['referencia']:%d/%m/%Y}</dd>
+        <dt>Semana anterior</dt>
+        <dd>{m['inicio'] - timedelta(days=7):%d/%m/%Y} a {m['inicio'] - timedelta(days=1):%d/%m/%Y}</dd>
+        <dt>Entradas disponíveis</dt>
+        <dd>{m['primeira_entrada']:%d/%m/%Y} a {m['ultima_entrada']:%d/%m/%Y}</dd>
+    </dl>
+</div>
 
-{cards}
+</header>
+
+{alertas}
+
+<div class="zona-rotulo">
+    <span>Semana selecionada</span>
+    <span class="marca">responde aos filtros</span>
+</div>
 
 <section
     class="filtros"
@@ -948,11 +1236,7 @@ footer {{
 
 </fieldset>
 
-<p>
-    Os filtros afetam os indicadores da semana selecionada.
-    Semana anterior, acumulado e tabelas analíticas abaixo
-    permanecem sem filtros.
-</p>
+<div class="filtros-estado">
 
 <p
     id="situacao-filtros"
@@ -962,6 +1246,12 @@ footer {{
     Sem filtros: indicadores da semana completa.
 </p>
 
+<p>
+    Os filtros afetam os indicadores da semana selecionada.
+    Semana anterior, acumulado e tabelas analíticas abaixo
+    permanecem sem filtros.
+</p>
+
 <noscript>
 <p>
     Ative o JavaScript para explorar os filtros.
@@ -969,11 +1259,13 @@ footer {{
 </p>
 </noscript>
 
+</div>
+
 </section>
 
-<h2>Comparação do período</h2>
+{cards}
 
-{resumo}
+<h2>Comparação do período</h2>
 
 <p class="sub">
     Semana anterior:
@@ -983,6 +1275,13 @@ footer {{
     O acumulado considera todas as entradas anteriores a
     {m['fim']:%d/%m/%Y}.
 </p>
+
+{resumo}
+
+<div class="zona-rotulo">
+    <span>Semana completa</span>
+    <span class="marca fixa">sem filtros</span>
+</div>
 
 <h2>
     Onde se concentra o valor não contratado
@@ -1006,6 +1305,8 @@ footer {{
 
 {sem_canais}
 
+<div class="metodologia">
+
 <section class="aviso">
 
 <strong>
@@ -1017,6 +1318,8 @@ footer {{
 </ul>
 
 </section>
+
+<section class="definicoes">
 
 <h2>Definições e limites</h2>
 
@@ -1037,6 +1340,10 @@ footer {{
     do arquivo. Comparações semanais são descritivas
     e não demonstram causalidade.
 </p>
+
+</section>
+
+</div>
 
 <footer>
     Fonte: {escape(fonte)}
