@@ -78,7 +78,7 @@ flowchart TD
 
     H --> I["JSON estruturado"]
 
-    J["Gabarito de referência<br/>Gold Standard"] --> K["Avaliador"]
+    J["Gabarito de referência<br/>revisado manualmente"] --> K["Avaliador"]
 
     I --> K
 
@@ -348,9 +348,9 @@ Na execução final:
 
 ```text
 Parte 2: 35 testes aprovados
-Parte 3: 31 testes aprovados
+Parte 3: 32 testes aprovados
 
-Total: 66 testes aprovados
+Total: 67 testes aprovados
 ```
 
 A suíte completa foi executada com:
@@ -362,7 +362,7 @@ python -m pytest -v
 e terminou com:
 
 ```text
-66 passed
+67 passed
 ```
 
 Os testes cobrem, entre outros pontos:
@@ -500,7 +500,7 @@ Algumas limitações foram mantidas explicitamente na entrega:
 - a queda observada de conversão não foi submetida a teste de significância estatística;
 - associação entre características e contratação não implica causalidade;
 - a avaliação de IA utiliza apenas 17 laudos;
-- o gabarito da Parte 3 foi revisado por uma única pessoa;
+- o rascunho inicial do gabarito da Parte 3 teve apoio de IA e foi posteriormente revisado manualmente por uma única pessoa, não constituindo um *gold standard* humano totalmente independente;
 - determinados campos apresentaram erros recorrentes nos modelos locais;
 - o schema atual possui apenas `presente`, `ausente` e `conflitante`;
 - informações declaradas por uma parte, mas não verificadas documentalmente, ainda não possuem um estado próprio no schema;
@@ -598,4 +598,4 @@ Nenhum dado real de cliente do Banco Bari foi utilizado.
 
 GitHub: [vicvictorius](https://github.com/vicvictorius)
 
-Repositório do projeto: [bari-case](https://github.com/vicvictorius)
+Repositório do projeto: [bari-case](https://github.com/vicvictorius/bari-case)
