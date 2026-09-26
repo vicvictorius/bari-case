@@ -74,7 +74,7 @@ atualizada compatível com o contrato. A base sintética termina em 2025: execut
 com a data atual produzirá aviso de base possivelmente desatualizada.
 
 ```powershell
-& "C:\Users\vekn\Desktop\BARI\BARI\.venv\Scripts\python.exe" "C:\Users\vekn\Desktop\BARI\BARI\parte2_automacao\relatorio_semanal.py"
+& "C:\caminho\para\bari-case\.venv\Scripts\python.exe" "C:\caminho\para\bari-case\parte2_automacao\relatorio_semanal.py"
 ```
 
 Opções: `--entrada CAMINHO_CSV`, `--saida DIRETORIO` e

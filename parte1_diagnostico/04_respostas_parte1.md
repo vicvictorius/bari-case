@@ -2,7 +2,7 @@
 
 Métricas usadas: conversão = Contratada / total de propostas (19,39%); valor solicitado não contratado =
 soma de `valor_solicitado` das propostas não contratadas (ver `definicao_metricas.md`).
-Evidência completa em `02_diagnostico_funil.py` / `diagnostico_output.txt`.
+Evidência completa em `03_diagnostico_funil.py` / `03_diagnostico_output.txt`.
 
 ## 1. Onde o funil perde mais valor?
 

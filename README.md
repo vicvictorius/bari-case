@@ -105,14 +105,14 @@ bari-case/
 │   └── tratamento.py
 │
 ├── parte1_diagnostico/
-│   ├── 00Profilling.py
+│   ├── 00_profiling.py
+│   ├── 00_profiling_output.txt
 │   ├── 01_tratamento.py
 │   ├── 02_comparacao_metricas.py
-│   ├── 02_diagnostico_funil.py
-│   ├── 03_respostas_parte1.md
+│   ├── 03_diagnostico_funil.py
+│   ├── 03_diagnostico_output.txt
+│   ├── 04_respostas_parte1.md
 │   ├── definicao_metricas.md
-│   ├── diagnostico_output.txt
-│   ├── profilling_output.txt
 │   ├── propostas_credito_tratado.csv
 │   └── registro_tratamento.md
 │
@@ -173,7 +173,7 @@ parte1_diagnostico/registro_tratamento.md
 As respostas consolidadas da Parte 1 estão em:
 
 ```text
-parte1_diagnostico/03_respostas_parte1.md
+parte1_diagnostico/04_respostas_parte1.md
 ```
 
 Uma preocupação durante essa etapa foi evitar que a limpeza dos dados alterasse silenciosamente os resultados do negócio.
@@ -505,13 +505,23 @@ pip install -r requirements.txt
 
 ## Executar a Parte 1
 
-Os scripts estão organizados em ordem de execução dentro de:
+Na raiz do projeto, com o ambiente virtual ativo, rode os scripts na ordem:
 
-```text
-parte1_diagnostico/
+```bash
+python parte1_diagnostico/00_profiling.py > parte1_diagnostico/00_profiling_output.txt
+python parte1_diagnostico/01_tratamento.py
+python parte1_diagnostico/02_comparacao_metricas.py
+python parte1_diagnostico/03_diagnostico_funil.py > parte1_diagnostico/03_diagnostico_output.txt
 ```
 
-Os principais artefatos gerados e utilizados na análise também estão preservados nessa pasta.
+| Script | Lê | Produz |
+|---|---|---|
+| `00_profiling.py` | CSV bruto | diagnóstico da sujeira da base (saída no terminal) |
+| `01_tratamento.py` | CSV bruto | `propostas_credito_tratado.csv`, via `pipeline/tratamento.py` |
+| `02_comparacao_metricas.py` | CSV tratado | comparação das duas definições de valor perdido (`definicao_metricas.md`) |
+| `03_diagnostico_funil.py` | CSV tratado | números que sustentam `04_respostas_parte1.md` |
+
+Os arquivos `*_output.txt` versionados são a saída exata desses comandos; rodar de novo deve reproduzi-los.
 
 ---
 
