@@ -1,12 +1,12 @@
 # Parte 1 — Diagnóstico do funil
 
-Métricas usadas: conversão = Contratada / total de propostas (19,39%); dinheiro perdido =
+Métricas usadas: conversão = Contratada / total de propostas (19,39%); valor solicitado não contratado =
 soma de `valor_solicitado` das propostas não contratadas (ver `definicao_metricas.md`).
 Evidência completa em `02_diagnostico_funil.py` / `diagnostico_output.txt`.
 
 ## 1. Onde o funil perde mais valor?
 
-| Etapa | Propostas perdidas | Valor perdido | % do total perdido |
+| Etapa | Propostas não contratadas | Valor solicitado não contratado | % do total não contratado |
 |---|---:|---:|---:|
 | 3 — Análise de crédito | 1.799 | **R$ 703,0 mi** | **35,1%** |
 | 4 — Avaliação do imóvel | 1.267 | R$ 497,0 mi | 24,8% |
@@ -20,8 +20,8 @@ quanto em valor — não é só "onde mais gente desiste", é onde o ticket méd
 de "perde muita gente, mas de ticket pequeno" disfarçando o problema.
 
 Olhando por **motivo** de perda, um achado que contraria a leitura mais óbvia: somando
-`Sem retorno` (31,5% do valor) e `Desistiu` (29,3%), **60,8% do valor perdido é
-desengajamento do cliente — não reprovação de crédito** (17,6%).
+`Sem retorno` (31,5% do valor) e `Desistiu` (29,3%), **60,8% do valor solicitado não contratado está
+associado a desengajamento do cliente — não reprovação de crédito** (17,6%).
 
 Cruzando etapa × status, na própria etapa 3 as três causas (`Desistiu`, `Reprovada crédito`
 e `Sem retorno`) aparecem quase empatadas: **614 / 608 / 577 propostas**, respectivamente.
@@ -137,8 +137,8 @@ Na etapa 3, esses dois motivos somam:
 - **1.191 propostas**
 - aproximadamente **R$ 471,7 milhões em valor solicitado**
 
-Isso concentra a ação no mesmo estágio identificado como maior ponto de perda financeira
-do funil.
+Isso concentra a ação no mesmo estágio identificado como a maior concentração de valor
+solicitado não contratado do funil.
 
 **Impacto estimado:** em um cenário de sensibilidade no qual uma intervenção de processo
 recuperasse **10% do valor associado a essas propostas**, a oportunidade seria equivalente
@@ -234,8 +234,8 @@ permanecem hipóteses e não conclusões.
 
 ## Conclusão da Parte 1
 
-A análise confirma que o maior ponto de perda financeira está na **Análise de Crédito**,
-responsável por **35,1% do valor perdido**.
+A análise mostra que a maior concentração de valor solicitado não contratado está na
+**Análise de Crédito**, responsável por **35,1% do valor solicitado não contratado**.
 
 A percepção da liderança também encontra suporte parcial nos dados: existe um sinal de
 queda da conversão e o canal Correspondente apresenta conversão observada inferior aos

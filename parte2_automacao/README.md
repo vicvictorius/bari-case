@@ -13,7 +13,7 @@ compartilhar. Nenhum modelo de IA é executado e nenhum e-mail é enviado.
   exclusivo (segunda-feira seguinte), inclusive na virada do ano.
 - **Conversão observada:** `status_final == Contratada` dividido por todas as
   propostas da coorte, como na Parte 1. Sem propostas, é **não aplicável**.
-- **Valor perdido:** soma de `valor_solicitado` nas propostas não contratadas,
+- **Valor solicitado não contratado:** soma de `valor_solicitado` nas propostas não contratadas,
   atribuída à `etapa_max_funil`. É principal solicitado não contratado, não
   receita, prejuízo contábil ou perdas ocorridas durante a semana.
 - **Comparação:** semana anterior e acumulado das entradas até o domingo

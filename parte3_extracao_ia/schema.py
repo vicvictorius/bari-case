@@ -28,9 +28,10 @@ class CampoExtraido(BaseModel):
     """Um único campo extraído, com evidência.
 
     `valor` só é confiável quando `status == PRESENTE`. Nos demais casos,
-    `valor` pode vir None (ausente) ou conter o melhor palpite do modelo
-    (conflitante) -- mas em ambos os casos `trecho_bruto` é obrigatório,
-    porque é a evidência, não o veredito da IA, que importa na auditoria.
+    o campo não deve ser tratado como informação confiável: em `ausente`,
+    `valor` pode ser None; em `conflitante`, a ambiguidade deve permanecer
+    explícita. Nesses casos, `trecho_bruto` é obrigatório porque preserva
+    a evidência necessária para auditoria.
     """
 
     valor: Optional[str] = None

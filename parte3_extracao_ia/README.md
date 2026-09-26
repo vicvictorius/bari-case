@@ -112,7 +112,7 @@ Qwen2.5 7B executava majoritariamente em CPU e levava aproximadamente
 
 O Qwen3 1.7B permitiu executar os **17/17 laudos sem falha de pipeline**.
 
-A acurácia geral de status observada foi de:
+A acurácia de status observada foi de:
 
 **92,4%**
 
@@ -133,7 +133,7 @@ executar o `qwen2.5:7b-instruct` de forma mais viável.
 O modelo foi avaliado utilizando os mesmos **17 laudos** e o mesmo
 gabarito.
 
-A acurácia geral de status foi:
+A acurácia de status foi:
 
 **92,9%**
 
@@ -159,7 +159,7 @@ Os artefatos dessa execução estão disponíveis em:
 
 ## Interpretação dos resultados
 
-A diferença de acurácia geral de status entre os dois experimentos foi
+A diferença de acurácia de status entre os dois experimentos foi
 pequena:
 
 | Modelo | Acurácia de status |
