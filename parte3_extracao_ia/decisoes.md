@@ -211,3 +211,24 @@ reportada acima usou `qwen3:1.7b` (1,3GB, cabe na GPU) por ser
 significativamente mais rápido nesse hardware — outro trade-off
 custo/tempo vs. qualidade assumido conscientemente, documentado aqui em
 vez de escondido atrás de um número de acurácia sem contexto.
+
+### Migração de hardware: GT 1030 (2GB) → RTX 3050 (4GB)
+
+Depois da rodada acima, identificamos uma segunda máquina disponível (PC
+Windows com RTX 3050, 4GB de VRAM) que permite rodar o modelo maior
+(`qwen2.5:7b-instruct`, 5,1GB) com uma fração bem maior na GPU do que os
+4% possíveis na GT 1030 — mesmo sem caber inteiro nos 4GB, o ganho de
+velocidade esperado é grande o suficiente para tornar o `qwen2.5:7b`
+viável nesse hardware, ao contrário do que acontecia na GT 1030.
+
+Plano: rodar `extrator_local.py --modelo qwen2.5:7b-instruct` no PC
+Windows e comparar o `relatorio_acuracia.md` resultante com o gerado pelo
+`qwen3:1.7b` (seção acima) — em vez de simplesmente substituir um
+resultado pelo outro. A comparação entre os dois modelos, rodando no
+mesmo gabarito e a mesma base de 17 laudos, é evidência mais forte do
+trade-off tamanho-do-modelo vs. qualidade do que qualquer um dos dois
+números isolado.
+
+**Pendência**: os resultados do `qwen2.5:7b-instruct` no hardware novo
+ainda não foram gerados. Quando estiverem, esta seção deve ser
+atualizada com os números reais e a comparação lado a lado.
