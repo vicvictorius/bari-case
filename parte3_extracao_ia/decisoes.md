@@ -1235,6 +1235,23 @@ pipeline para `area_privativa_m2` ou `area_total_m2`.
 
 ### Limitações
 
+O prompt V2 foi refinado com base nos erros dos mesmos 17 laudos usados na
+avaliação, incluindo os casos dos laudos 5, 7 e 15 descritos acima. Isso
+introduz **viés de ajuste do prompt**: o resultado é otimista como estimativa
+do desempenho em laudos novos, pois os documentos avaliados também orientaram
+as regras do prompt.
+
+Os 100% de acurácia de valor em `area_privativa_m2` e `area_total_m2` são um
+resultado **dentro da amostra**, após o refinamento orientado por seus erros.
+Eles mostram o desempenho nessa amostra e nos casos elegíveis à métrica
+condicional, sem demonstrar generalização para documentos novos.
+
+Uma medição sem esse viés de reutilização exigiria avaliar o prompt em laudos
+que nunca tivessem sido usados para ajustá-lo, reservados desde o início ou
+obtidos posteriormente. Com apenas 17 laudos, essa separação deixaria
+pouquíssimos casos de teste; por isso, não foi realizada. Uma avaliação futura
+deve manter o prompt fixo durante a medição em laudos novos.
+
 O experimento utiliza um modelo generativo local e apenas uma execução de cada
 configuração. Portanto, a diferença observada não deve ser interpretada como
 garantia estatística de melhoria em execuções futuras.
@@ -1257,8 +1274,10 @@ O experimento indica que validação estrutural e orientação semântica resolv
 classes diferentes de erro.
 
 O schema tipado impede que formatos estruturalmente inválidos sejam aceitos,
-enquanto o refinamento do prompt melhora a decisão sobre qual informação do
-documento pertence a cada campo.
+enquanto o refinamento do prompt apresentou melhora na amostra usada para
+ajustá-lo, ao orientar qual informação do documento pertence a cada campo.
+Essa observação ainda exige avaliação em laudos novos para verificar a
+generalização.
 
 Os próximos gargalos observados estão principalmente nos campos textuais,
 como `matricula` e `endereco`, nos quais diferenças de representação reduzem

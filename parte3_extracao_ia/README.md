@@ -208,6 +208,8 @@ qualidade da extração, tempo de execução e hardware disponível**.
 A avaliação possui algumas limitações conhecidas:
 
 - o conjunto contém apenas 17 laudos;
+- o prompt V2 foi refinado a partir dos erros dos mesmos 17 laudos usados na avaliação. Isso introduz viés de ajuste e torna o resultado otimista como estimativa de desempenho em laudos novos; os 100% de acurácia de valor nas áreas são um resultado dentro da amostra, não uma demonstração de generalização;
+- uma avaliação sem esse viés de reutilização exigiria laudos nunca usados para ajustar o prompt, reservados desde o início ou obtidos posteriormente. Com apenas 17 laudos, uma separação deixaria pouquíssimos casos de teste; por isso, ela não foi realizada;
 - o rascunho inicial do gabarito teve apoio de IA e foi posteriormente
   revisado manualmente por uma única pessoa, não constituindo um gold
   standard humano totalmente independente;
