@@ -1,0 +1,4 @@
+anthropic>=1.8.0
+ollama>=0.6.0
+pydantic>=2.13.0
+pytest>=9.1.0

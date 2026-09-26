@@ -1,0 +1,106 @@
+"""Testes do avaliador de acurácia.
+
+O ponto central destes testes é provar que `avaliador.py` REALMENTE detecta
+erros -- não basta rodar contra uma extração idêntica ao gabarito e ver
+100%. Por isso `extracao_com_erros_tipicos` simula os 3 erros mais prováveis
+de uma extração por LLM que não segue as regras à risca:
+  1. calcular um valor derivado que o documento não afirma (soma de áreas);
+  2. resolver uma divergência escolhendo um dos dois valores em vez de
+     marcar como conflitante;
+  3. inferir um ano a partir de uma idade aproximada.
+"""
+
+import json
+import sys
+from pathlib import Path
+
+import pytest
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+from avaliador import avaliar, carregar, normalizar_valor  # noqa: E402
+
+
+@pytest.mark.parametrize(
+    "a, b",
+    [
+        # casos reais do relatório com qwen3:1.7b -- formatação diferente,
+        # mesmo valor, não deveriam contar como divergência
+        ("78.40", "78,40"),
+        ("642000.00", "642000"),
+        ("218000.00", "218.000"),
+        ("1275000.00", "1.275.000,00"),
+        ("2180000.00", "R$ 2.180.000,00"),
+        ("201.443", "201443"),
+        ("2025-03-12", "12/03/2025"),
+        ("2025-04-07", "07/04/2025"),
+    ],
+)
+def test_normalizar_valor_trata_formatacao_equivalente_como_igual(a, b):
+    assert normalizar_valor(a) == normalizar_valor(b)
+
+
+@pytest.mark.parametrize(
+    "a, b",
+    [
+        # esses SÃO diferenças de valor de verdade -- não podem virar iguais
+        ("92.50", "125.00"),  # troca área privativa/total (laudo_7)
+        ("2025-03-12", "2025-03-13"),
+        ("45.981 (Cartório do 3º Ofício)", "45.981"),  # contexto a mais não é so formatação
+    ],
+)
+def test_normalizar_valor_preserva_diferencas_reais(a, b):
+    assert normalizar_valor(a) != normalizar_valor(b)
+
+
+def test_extracao_identica_ao_gabarito_da_100_por_cento():
+    gabarito = json.loads(Path(__file__).resolve().parent.parent.joinpath("gabarito.json").read_text())
+    gabarito_idx = {r["arquivo_origem"]: r for r in gabarito}
+
+    resultado = avaliar(extracao=gabarito_idx, gabarito=gabarito_idx)
+    assert resultado["acuracia_status_geral"] == 1.0
+    assert resultado["divergencias"] == []
+
+
+def test_extracao_com_erros_tipicos_e_detectada():
+    gabarito = json.loads(Path(__file__).resolve().parent.parent.joinpath("gabarito.json").read_text())
+    gabarito_idx = {r["arquivo_origem"]: r for r in gabarito}
+
+    extracao_idx = json.loads(json.dumps(gabarito_idx))  # cópia profunda
+
+    # Erro 1: "IA" soma área útil + comum do laudo_3 em vez de marcar ausente.
+    extracao_idx["laudo_3.txt"]["area_total_m2"] = {
+        "valor": "73.00", "status": "presente", "trecho_bruto": None,
+    }
+
+    # Erro 2: "IA" resolve a divergência do laudo_17 escolhendo o valor do
+    # cabeçalho, em vez de marcar como conflitante.
+    extracao_idx["laudo_17.txt"]["area_total_m2"] = {
+        "valor": "95.00", "status": "presente", "trecho_bruto": None,
+    }
+
+    # Erro 3: "IA" infere ano de construção a partir da idade aproximada do
+    # laudo_14 (2025 - 18 ≈ 2007), quando deveria marcar ausente.
+    extracao_idx["laudo_14.txt"]["ano_construcao"] = {
+        "valor": "2007", "status": "presente", "trecho_bruto": None,
+    }
+
+    resultado = avaliar(extracao=extracao_idx, gabarito=gabarito_idx)
+
+    assert resultado["acuracia_status_geral"] < 1.0
+    campos_com_erro = {d["campo"] for d in resultado["divergencias"]}
+    assert "area_total_m2" in campos_com_erro
+    assert "ano_construcao" in campos_com_erro
+    assert len(resultado["divergencias"]) == 3
+
+
+def test_laudo_faltando_na_extracao_nao_e_ignorado_silenciosamente():
+    gabarito = json.loads(Path(__file__).resolve().parent.parent.joinpath("gabarito.json").read_text())
+    gabarito_idx = {r["arquivo_origem"]: r for r in gabarito}
+
+    extracao_incompleta = {k: v for k, v in gabarito_idx.items() if k != "laudo_5.txt"}
+
+    resultado = avaliar(extracao=extracao_incompleta, gabarito=gabarito_idx)
+    assert "laudo_5.txt" in resultado["arquivos_faltando_na_extracao"]
+    # 16 dos 17 laudos com todos os campos corretos -> geral cai proporcionalmente
+    assert resultado["acuracia_status_geral"] < 1.0
