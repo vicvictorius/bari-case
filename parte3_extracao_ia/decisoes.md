@@ -1262,7 +1262,9 @@ que falhou foi diferente:
 - schema tipado / prompt anterior: `laudo_16.txt`;
 - prompt refinado: `laudo_4.txt`.
 
-Isso evidencia variabilidade de geração do modelo.
+Os laudos ausentes diferem entre as execuções, mas as mensagens finais de
+erro não foram preservadas. Sem elas, não é possível atribuir essas falhas
+à variabilidade de geração do modelo nem a uma regra específica do schema.
 
 A acurácia de valor também é condicional: considera apenas casos em que
 gabarito e extração classificam o campo como `presente`. Portanto, não deve ser
@@ -1439,3 +1441,49 @@ O efeito sobre a acurácia e a cobertura do modelo real **só será conhecido
 com uma nova execução**. Os relatórios e JSONs históricos foram preservados;
 seus resultados não medem esta nova validação textual. A métrica conservadora
 e a métrica complementar do avaliador não foram alteradas.
+
+## Registro das falhas das execuções com schema tipado
+
+As mensagens finais de erro das execuções históricas não foram preservadas,
+e o autor confirmou que não dispõe mais delas. Não foi possível recuperar
+o erro de validação nem identificar uma regra do schema que tenha barrado
+cada laudo.
+
+| Execução | Laudo ausente | Evidência disponível | Causa da falha |
+|---|---|---|---|
+| Schema tipado, prompt anterior | `laudo_16.txt` | Registro na seção do experimento deste documento; saída não versionada | Desconhecida: mensagem final não preservada |
+| Schema tipado + prompt V2 | `laudo_4.txt` | Ausência na saída versionada e indicação no relatório V2 | Desconhecida: mensagem final não preservada |
+
+Fontes do V2:
+
+- [`saida_extracao_local_qwen25-7b-tipado-prompt-v2.json`](saida_extracao_local_qwen25-7b-tipado-prompt-v2.json)
+- [`relatorio_acuracia_qwen25-7b-tipado-prompt-v2-normalizado.md`](relatorio_acuracia_qwen25-7b-tipado-prompt-v2-normalizado.md)
+
+O fluxo de `extrator_local.py` registra erros de comunicação com o Ollama,
+JSON inválido e validação Pydantic. Ao esgotar as tentativas, inclui o último
+erro na exceção, que é enviada ao log. A ausência de um laudo na saída não
+permite distinguir essas causas. Portanto, não há evidência suficiente para
+afirmar que essas duas falhas foram rejeições deliberadas de valores
+inválidos pelo schema.
+
+O `.gitignore` exclui `*.log`, e o extrator não grava atualmente um artefato
+estruturado com os detalhes das falhas. Uma nova execução pode gerar novas
+evidências, mas não recupera nem comprova a causa das falhas históricas.
+
+### Melhoria proposta para próximas execuções
+
+Propõe-se uma alteração pequena em `extrator_local.py`: além de contabilizar
+as falhas, acumular o nome do arquivo e a mensagem final da exceção de cada
+laudo que esgotou as tentativas e gravar essa lista ao lado do JSON de saída,
+com o nome `falhas_<nome_do_arquivo_de_saida>.json`. Por exemplo, para
+`saida_extracao_local.json`, gerar `falhas_saida_extracao_local.json`.
+
+Cada registro deve conter `arquivo_origem` e `ultimo_erro`. O arquivo deve
+ser gravado também quando a lista estiver vazia, para não manter falhas de
+uma execução anterior. A saída parcial válida e o retorno de erro de uma
+execução incompleta devem ser preservados. Esse JSON não é excluído pela
+regra `*.log` e pode ser versionado junto dos resultados para auditoria.
+
+Esta é uma **proposta ainda não implementada** nesta tarefa documental.
+Os resultados históricos, o extrator e as métricas de avaliação permanecem
+inalterados.
