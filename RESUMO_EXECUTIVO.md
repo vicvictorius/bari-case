@@ -26,7 +26,7 @@ A queda existe, mas é relativamente modesta e deve ser interpretada com cautela
 
 Já o canal **Correspondente** apresenta um sinal mais forte: sua conversão é de **14,3%**, enquanto os demais canais ficam aproximadamente entre **20% e 22%**.
 
-Além de converter menos, o canal Correspondente vem aumentando sua participação no volume de propostas, podendo contribuir para a redução da conversão agregada.
+Além de apresentar menor conversão, o canal Correspondente vem aumentando sua participação no volume de propostas. Esse movimento é compatível com pressão negativa sobre a conversão agregada, mas os dados disponíveis não permitem atribuir causalmente a queda ao canal.
 
 ### 3. Score é a característica com maior associação descritiva à contratação
 
