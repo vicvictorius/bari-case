@@ -128,6 +128,28 @@ def test_semana_vazia_e_base_antiga_nao_sugerem_conversao_zero():
     assert "Sem propostas na semana" in html
 
 
+@pytest.mark.parametrize("referencia", [date(2026, 1, 5), date(2026, 9, 28)])
+def test_notas_permanentes_ficam_em_como_interpretar_e_alertas_sobem_sem_duplicar(referencia):
+    # Protege a apresentação: a regra dos avisos continua em calcular().
+    from parte2_automacao.relatorio_semanal import AVISOS_METODOLOGICOS
+    m = calcular(dados_metricas(), referencia)
+    assert m["avisos"][:len(AVISOS_METODOLOGICOS)] == list(AVISOS_METODOLOGICOS)
+    html = gerar_html(m, "entrada.csv")
+    analisar_html(html)
+    topo, _, resto = html.partition('<div class="zona-rotulo">')
+    como_interpretar = resto[resto.index('<section class="aviso">'):]
+    como_interpretar = como_interpretar[:como_interpretar.index("</section>")]
+    for aviso in m["avisos"]:
+        assert html.count(aviso) == 1
+        if aviso in AVISOS_METODOLOGICOS:
+            assert aviso in como_interpretar
+        else:
+            assert aviso in topo and 'class="alerta"' in topo
+    dinamicos = [a for a in m["avisos"] if a not in AVISOS_METODOLOGICOS]
+    assert bool(dinamicos) == (referencia == date(2026, 9, 28))
+    assert ('class="alertas"' in html) == bool(dinamicos)
+
+
 def test_html_escapa_texto_do_csv():
     df = dados_metricas()
     canal = '</script><script>alert(1)</script> & "ação" \\ \u2028\u2029'
