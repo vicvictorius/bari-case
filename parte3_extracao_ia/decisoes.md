@@ -1165,3 +1165,204 @@ O avaliador passou a reportar a **acurácia geral de valor** ao lado da de
 status. Na execução do Qwen2.5 7B: status 92,9% (158/170), valor 63,6%
 (91/143). A primeira mede se o modelo percebeu a existência do campo; a
 segunda mede se o dado está certo, que é o que importa para quem usa.
+
+## Experimento — Schema tipado + refinamento semântico do prompt
+
+### Contexto
+
+Após a introdução do schema tipado, foi realizada uma nova execução dos 17
+laudos com o modelo local `qwen2.5:7b-instruct`.
+
+A primeira execução com o schema tipado apresentou:
+
+- acurácia geral de status: 84,7%;
+- acurácia de valor condicional: 77,3% (99/128);
+- 16 de 17 laudos processados com sucesso;
+- falha explícita no `laudo_16.txt`.
+
+A análise das divergências mostrou um padrão específico nos campos de área.
+O modelo confundia área do terreno com área construída ou edificada.
+
+Exemplos observados:
+
+- `laudo_5`: terreno de 4,8 ha e benfeitorias de 310 m²;
+- `laudo_7`: terreno de 125 m² e área edificada de 92,5 m²;
+- `laudo_15`: terreno de 200 m² e área construída de 135 m².
+
+O schema tipado não consegue detectar esse tipo de erro, pois valores como
+310.0, 92.5 e 135.0 são números estruturalmente válidos.
+
+### Hipótese
+
+A falha era predominantemente semântica: o prompt informava quais campos
+deveriam ser extraídos, mas não definia suficientemente a diferença entre
+`area_privativa_m2` e `area_total_m2`.
+
+### Alteração
+
+Foram adicionadas ao prompt regras de domínio para:
+
+- associar área privativa, construída, edificada, coberta ou de benfeitorias
+  a `area_privativa_m2`;
+- associar área do terreno ou lote a `area_total_m2`;
+- impedir que a área construída substitua a área do terreno quando ambas
+  estiverem explicitamente disponíveis;
+- converter unidades de superfície para m² quando a conversão for inequívoca,
+  incluindo `1 ha = 10.000 m²`.
+
+Nenhuma alteração foi realizada no schema Pydantic, na normalização ou no
+avaliador durante esse experimento.
+
+### Resultado
+
+A nova execução apresentou:
+
+| Métrica | Schema tipado | Prompt refinado | Variação |
+|---|---:|---:|---:|
+| Acurácia de status | 84,7% | 90,6% | +5,9 pp |
+| Acurácia de valor condicional | 77,3% | 80,9% | +3,6 pp |
+| Laudos processados | 16/17 | 16/17 | sem alteração |
+
+Nos campos diretamente relacionados à mudança:
+
+| Campo | Status antes | Status depois | Valor antes | Valor depois |
+|---|---:|---:|---:|---:|
+| `area_privativa_m2` | 64,7% | 94,1% | 100,0% | 100,0% |
+| `area_total_m2` | 88,2% | 94,1% | 75,0% | 100,0% |
+
+Na execução com o prompt refinado, não houve divergência de valor aceita pelo
+pipeline para `area_privativa_m2` ou `area_total_m2`.
+
+### Limitações
+
+O experimento utiliza um modelo generativo local e apenas uma execução de cada
+configuração. Portanto, a diferença observada não deve ser interpretada como
+garantia estatística de melhoria em execuções futuras.
+
+Além disso, ambos os experimentos processaram 16 dos 17 laudos, mas o arquivo
+que falhou foi diferente:
+
+- schema tipado / prompt anterior: `laudo_16.txt`;
+- prompt refinado: `laudo_4.txt`.
+
+Isso evidencia variabilidade de geração do modelo.
+
+A acurácia de valor também é condicional: considera apenas casos em que
+gabarito e extração classificam o campo como `presente`. Portanto, não deve ser
+interpretada isoladamente como acurácia end-to-end do pipeline.
+
+### Conclusão
+
+O experimento indica que validação estrutural e orientação semântica resolvem
+classes diferentes de erro.
+
+O schema tipado impede que formatos estruturalmente inválidos sejam aceitos,
+enquanto o refinamento do prompt melhora a decisão sobre qual informação do
+documento pertence a cada campo.
+
+Os próximos gargalos observados estão principalmente nos campos textuais,
+como `matricula` e `endereco`, nos quais diferenças de representação reduzem
+a métrica de exact match mesmo quando parte ou toda a informação semântica
+está preservada.
+
+## Avaliação complementar de campos textuais
+
+Após o experimento com o prompt refinado, foi realizada uma análise específica
+das divergências de valor nos campos textuais `endereco` e `matricula`.
+
+A métrica conservadora existente foi preservada para manter comparabilidade
+com os benchmarks anteriores. Entretanto, foi observado que parte das
+divergências nesses dois campos era causada por diferenças superficiais de
+representação, e não necessariamente por perda de informação.
+
+Exemplos incluem:
+
+- `Curitiba/PR` versus `Curitiba-PR`;
+- `145.230 (7º RGI)` versus `145.230 do 7º RGI`;
+- presença de wrappers artificiais produzidos pelo modelo;
+- diferenças de pontuação e separadores.
+
+Por esse motivo, foi adicionada ao avaliador uma métrica complementar e
+determinística de equivalência textual.
+
+### Normalização textual
+
+A normalização complementar:
+
+- converte o texto para minúsculas;
+- remove acentuação;
+- normaliza pontuação e separadores;
+- remove wrappers artificiais simples observados nas saídas dos modelos;
+- ignora conectores simples como `do`, `da` e `de`.
+
+A métrica é aplicada somente aos campos:
+
+- `endereco`;
+- `matricula`.
+
+Ela não substitui a métrica conservadora de valor.
+
+### Resultado
+
+Na execução com schema tipado e prompt V2:
+
+- acurácia geral de valor conservadora: **80,9% (114/141)**;
+- equivalência textual normalizada em `endereco` + `matricula`:
+  **76,7% (23/30)**.
+
+Por campo:
+
+| Campo | Valor conservador | Equivalência textual normalizada |
+|---|---:|---:|
+| `endereco` | 26,7% | 73,3% |
+| `matricula` | 33,3% | 80,0% |
+
+Os percentuais de 80,9% e 76,7% não são diretamente comparáveis, pois usam
+conjuntos e denominadores diferentes. A primeira métrica considera todos os
+campos aplicáveis à comparação de valor, enquanto a segunda considera somente
+`endereco` e `matricula`.
+
+### Auditoria das equivalências
+
+A normalização recuperou 14 casos que falhavam na comparação conservadora por
+diferenças de representação.
+
+Casos com perda real de informação continuaram sendo tratados como
+divergências.
+
+Exemplos:
+
+- `laudo_3`: endereço extraído sem `Sala 503` e `Edifício Horizonte`;
+- `laudo_7`: matrícula extraída sem a informação do cartório;
+- `laudo_2`: matrícula sem o complemento `Cartório do 3º Ofício`.
+
+Essa característica é importante para evitar que a normalização aumente
+artificialmente a acurácia ao esconder erros semânticos.
+
+### Decisão
+
+Foram mantidas duas perspectivas de avaliação:
+
+1. comparação conservadora, utilizada como métrica principal e comparável aos
+   benchmarks anteriores;
+2. equivalência textual normalizada, utilizada como métrica complementar para
+   analisar diferenças de representação em campos textuais.
+
+Não foram introduzidos fuzzy matching, distância de Levenshtein, embeddings ou
+LLM-as-a-judge. Para o conjunto atual de 17 laudos, a abordagem determinística
+mantém a avaliação simples, reproduzível e auditável.
+
+### Validação
+
+Após as alterações no avaliador e a inclusão dos testes da normalização
+textual:
+
+- **84 testes passaram**;
+- `avaliador.py` e `testes/test_avaliador.py` passaram no Ruff sem erros.
+
+Assim, a avaliação final passa a separar quatro dimensões:
+
+1. cobertura do pipeline;
+2. acurácia de status;
+3. acurácia condicional de valor;
+4. equivalência textual complementar.
