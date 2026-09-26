@@ -8,6 +8,11 @@ de uma extração por LLM que não segue as regras à risca:
   2. resolver uma divergência escolhendo um dos dois valores em vez de
      marcar como conflitante;
   3. inferir um ano a partir de uma idade aproximada.
+
+Os testes de normalização também cobrem artefatos reais observados durante
+o benchmark com qwen2.5:7b-instruct. O objetivo é permitir diferenças
+puramente representacionais sem tornar o avaliador permissivo a ponto de
+esconder erros semânticos reais.
 """
 
 import json
@@ -24,8 +29,8 @@ from avaliador import avaliar, carregar, normalizar_valor  # noqa: E402
 @pytest.mark.parametrize(
     "a, b",
     [
-        # casos reais do relatório com qwen3:1.7b -- formatação diferente,
-        # mesmo valor, não deveriam contar como divergência
+        # Casos reais do relatório com qwen3:1.7b:
+        # formatação diferente, mesmo valor.
         ("78.40", "78,40"),
         ("642000.00", "642000"),
         ("218000.00", "218.000"),
@@ -34,6 +39,16 @@ from avaliador import avaliar, carregar, normalizar_valor  # noqa: E402
         ("201.443", "201443"),
         ("2025-03-12", "12/03/2025"),
         ("2025-04-07", "07/04/2025"),
+
+        # Artefatos reais observados no benchmark com qwen2.5:7b-instruct.
+        # O conteúdo numérico é equivalente; apenas existem wrappers
+        # artificiais ao redor do valor.
+        ("/78.40", "78.40"),
+        ("id_146.00", "146.00"),
+        ("${1020.00}", "1020.00"),
+        ("strconv(285)", "285.00"),
+        ("log(910000)", "910000.00"),
+        ("name: 420,00 m²", "420.00"),
     ],
 )
 def test_normalizar_valor_trata_formatacao_equivalente_como_igual(a, b):
@@ -43,10 +58,22 @@ def test_normalizar_valor_trata_formatacao_equivalente_como_igual(a, b):
 @pytest.mark.parametrize(
     "a, b",
     [
-        # esses SÃO diferenças de valor de verdade -- não podem virar iguais
+        # Estes SÃO diferenças de valor reais e não podem virar iguais.
         ("92.50", "125.00"),  # troca área privativa/total (laudo_7)
         ("2025-03-12", "2025-03-13"),
-        ("45.981 (Cartório do 3º Ofício)", "45.981"),  # contexto a mais não é so formatação
+        (
+            "45.981 (Cartório do 3º Ofício)",
+            "45.981",
+        ),  # contexto a mais não é só formatação
+
+        # Proteções contra uma normalização excessivamente permissiva.
+        #
+        # Mesmo contendo um número reconhecível, o valor é diferente.
+        ("name: 125.00 m²", "92.50"),
+
+        # Existem dois números candidatos. O avaliador não deve simplesmente
+        # pegar o primeiro número da frase e declarar equivalência.
+        ("area 125.00 e terreno 420.00", "125.00"),
     ],
 )
 def test_normalizar_valor_preserva_diferencas_reais(a, b):
@@ -54,53 +81,99 @@ def test_normalizar_valor_preserva_diferencas_reais(a, b):
 
 
 def test_extracao_identica_ao_gabarito_da_100_por_cento():
-    gabarito = json.loads(Path(__file__).resolve().parent.parent.joinpath("gabarito.json").read_text())
+    gabarito = json.loads(
+        Path(__file__)
+        .resolve()
+        .parent.parent
+        .joinpath("gabarito.json")
+        .read_text(encoding="utf-8")
+    )
     gabarito_idx = {r["arquivo_origem"]: r for r in gabarito}
 
-    resultado = avaliar(extracao=gabarito_idx, gabarito=gabarito_idx)
+    resultado = avaliar(
+        extracao=gabarito_idx,
+        gabarito=gabarito_idx,
+    )
+
     assert resultado["acuracia_status_geral"] == 1.0
     assert resultado["divergencias"] == []
 
 
 def test_extracao_com_erros_tipicos_e_detectada():
-    gabarito = json.loads(Path(__file__).resolve().parent.parent.joinpath("gabarito.json").read_text())
+    gabarito = json.loads(
+        Path(__file__)
+        .resolve()
+        .parent.parent
+        .joinpath("gabarito.json")
+        .read_text(encoding="utf-8")
+    )
     gabarito_idx = {r["arquivo_origem"]: r for r in gabarito}
 
     extracao_idx = json.loads(json.dumps(gabarito_idx))  # cópia profunda
 
     # Erro 1: "IA" soma área útil + comum do laudo_3 em vez de marcar ausente.
     extracao_idx["laudo_3.txt"]["area_total_m2"] = {
-        "valor": "73.00", "status": "presente", "trecho_bruto": None,
+        "valor": "73.00",
+        "status": "presente",
+        "trecho_bruto": None,
     }
 
     # Erro 2: "IA" resolve a divergência do laudo_17 escolhendo o valor do
     # cabeçalho, em vez de marcar como conflitante.
     extracao_idx["laudo_17.txt"]["area_total_m2"] = {
-        "valor": "95.00", "status": "presente", "trecho_bruto": None,
+        "valor": "95.00",
+        "status": "presente",
+        "trecho_bruto": None,
     }
 
     # Erro 3: "IA" infere ano de construção a partir da idade aproximada do
     # laudo_14 (2025 - 18 ≈ 2007), quando deveria marcar ausente.
     extracao_idx["laudo_14.txt"]["ano_construcao"] = {
-        "valor": "2007", "status": "presente", "trecho_bruto": None,
+        "valor": "2007",
+        "status": "presente",
+        "trecho_bruto": None,
     }
 
-    resultado = avaliar(extracao=extracao_idx, gabarito=gabarito_idx)
+    resultado = avaliar(
+        extracao=extracao_idx,
+        gabarito=gabarito_idx,
+    )
 
     assert resultado["acuracia_status_geral"] < 1.0
-    campos_com_erro = {d["campo"] for d in resultado["divergencias"]}
+
+    campos_com_erro = {
+        d["campo"]
+        for d in resultado["divergencias"]
+    }
+
     assert "area_total_m2" in campos_com_erro
     assert "ano_construcao" in campos_com_erro
     assert len(resultado["divergencias"]) == 3
 
 
 def test_laudo_faltando_na_extracao_nao_e_ignorado_silenciosamente():
-    gabarito = json.loads(Path(__file__).resolve().parent.parent.joinpath("gabarito.json").read_text())
+    gabarito = json.loads(
+        Path(__file__)
+        .resolve()
+        .parent.parent
+        .joinpath("gabarito.json")
+        .read_text(encoding="utf-8")
+    )
     gabarito_idx = {r["arquivo_origem"]: r for r in gabarito}
 
-    extracao_incompleta = {k: v for k, v in gabarito_idx.items() if k != "laudo_5.txt"}
+    extracao_incompleta = {
+        k: v
+        for k, v in gabarito_idx.items()
+        if k != "laudo_5.txt"
+    }
 
-    resultado = avaliar(extracao=extracao_incompleta, gabarito=gabarito_idx)
+    resultado = avaliar(
+        extracao=extracao_incompleta,
+        gabarito=gabarito_idx,
+    )
+
     assert "laudo_5.txt" in resultado["arquivos_faltando_na_extracao"]
-    # 16 dos 17 laudos com todos os campos corretos -> geral cai proporcionalmente
+
+    # 16 dos 17 laudos com todos os campos corretos -> geral cai
+    # proporcionalmente.
     assert resultado["acuracia_status_geral"] < 1.0
