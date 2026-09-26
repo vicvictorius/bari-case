@@ -1,5 +1,7 @@
 # Plano de Execução — Desafio Prático AI & Data Lab | Bari
 
+> **Nota:** este documento registra o plano inicial de execução do case e foi preservado como evidência do processo de trabalho. As etapas descritas abaixo representam o planejamento realizado antes da conclusão da solução; o estado final da entrega está documentado no `README.md`, `DIARIO.md` e `RESUMO_EXECUTIVO.md`.
+
 ## Contexto de negócio
 
 Bari trabalha com crédito com garantia de imóvel (home equity). Ciclo da proposta:
@@ -45,10 +47,9 @@ Cada etapa perde propostas por reprovação de crédito, problema na garantia, d
 
 ## Entregáveis finais (checklist)
 
-- [ ] `README.md` — como rodar, estrutura dos arquivos, tempo total gasto
-- [ ] Script/Código/Notebook — Parte 1
-- [ ] Script/Código/Notebook — Parte 2
-- [ ] Script/Código/Notebook — Parte 3
-- [ ] `DIARIO.md` — Parte 4 (máx. 2 páginas)
-- [ ] Resumo executivo (1 página, PDF/slide/markdown) para liderança comercial
-- [ ] Citação de dados/gráficos/fontes externas usados
+- [x] `README.md` — como rodar, estrutura dos arquivos, tempo total gasto
+- [x] Script/Código/Notebook — Parte 1
+- [x] Script/Código/Notebook — Parte 2
+- [x] Script/Código/Notebook — Parte 3
+- [x] `DIARIO.md` — Parte 4 (máx. 2 páginas)
+- [x] Resumo executivo (1 página, PDF/slide/markdown) para liderança comercial
