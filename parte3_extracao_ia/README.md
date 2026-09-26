@@ -12,7 +12,7 @@ privativa, área total, ano de construção, valor de avaliação, matrícula,
 | `schema.py` | Contrato de dados (Pydantic): cada campo possui `valor`, `status` (`presente`, `ausente` ou `conflitante`) e `trecho_bruto` de evidência |
 | `extrator.py` | Pipeline alternativo via API da Anthropic, com saída estruturada, validação e nova tentativa quando a resposta é inválida |
 | `extrator_local.py` | Pipeline utilizado na execução real da entrega, via modelos locais com Ollama |
-| `construir_gabarito.py` | Gera `gabarito.json` a partir da leitura dos 17 laudos para posterior revisão |
+| `construir_gabarito.py` | Contém o gabarito de referência revisado e gera `gabarito.json` validando os registros pelo schema oficial |
 | `avaliador.py` | Compara a saída do extrator com `gabarito.json` e calcula acurácia por campo |
 | `gabarito.json` | Referência utilizada para avaliar as extrações |
 | `saida_extracao_local_qwen25-7b.json` | Resultado da execução dos 17 laudos com Qwen2.5 7B |
@@ -182,7 +182,9 @@ qualidade da extração, tempo de execução e hardware disponível**.
 A avaliação possui algumas limitações conhecidas:
 
 - o conjunto contém apenas 17 laudos;
-- o gabarito foi revisado por uma única pessoa;
+- o rascunho inicial do gabarito teve apoio de IA e foi posteriormente
+  revisado manualmente por uma única pessoa, não constituindo um gold
+  standard humano totalmente independente;
 - alguns campos exigem interpretação semântica mais complexa;
 - modelos menores apresentaram dificuldade na distinção entre áreas em
   determinados formatos de laudo;

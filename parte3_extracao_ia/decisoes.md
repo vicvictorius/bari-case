@@ -24,9 +24,9 @@ modelo, e não como o extrator principal.
 
 ## Critério de acerto: gabarito manual
 
-Optamos por medir acurácia contra um gabarito construído por leitura humana
-dos 17 laudos (`construir_gabarito.py`), em vez de medir apenas a consistência
-do modelo entre execuções repetidas.
+Optamos por medir acurácia contra um gabarito construído a partir da leitura
+dos 17 laudos e posteriormente revisado manualmente (`construir_gabarito.py`),
+em vez de medir apenas a consistência do modelo entre execuções repetidas.
 
 Consistência mede estabilidade, não necessariamente correção: um modelo pode
 errar da mesma maneira em execuções diferentes e ainda assim parecer
@@ -776,3 +776,291 @@ auditoria das divergências
 Isso permite que erros do modelo, erros do próprio código e erros da métrica
 de avaliação sejam identificados separadamente, em vez de escondidos dentro
 de um único número de acurácia.
+
+---
+
+# Pontos defensáveis e interpretação dos resultados
+
+Esta seção registra explicitamente o que os resultados da Parte 3 permitem
+concluir e quais limites devem ser considerados ao apresentar o experimento.
+
+## O que significa a acurácia de 92,9%
+
+O resultado de **92,9%** obtido com o `qwen2.5:7b-instruct` representa a
+**acurácia geral de status dos campos** no conjunto de 17 laudos utilizado
+neste desafio.
+
+Para cada campo, o avaliador verifica a classificação:
+
+```text
+presente
+ausente
+conflitante
+```
+
+Portanto, o resultado não deve ser interpretado como:
+
+```text
+92,9% dos valores foram extraídos perfeitamente
+```
+
+Um campo pode ter o `status` corretamente identificado como `presente` e,
+ainda assim, possuir um valor extraído incorretamente.
+
+Por esse motivo, o `avaliador.py` mantém separadas:
+
+```text
+acurácia de status
+acurácia dos valores
+divergências por campo
+```
+
+A métrica agregada é utilizada como um indicador do comportamento do
+extrator, e não como prova isolada da qualidade completa da extração.
+
+---
+
+## Limitação do gabarito
+
+O `gabarito.json` não deve ser tratado como um gold standard produzido por
+uma avaliação humana totalmente independente.
+
+O rascunho inicial (`GABARITO_BRUTO`) teve apoio de IA durante o
+desenvolvimento e foi posteriormente revisado manualmente com base nos
+17 laudos.
+
+Consequentemente, a avaliação possui uma limitação metodológica:
+
+```text
+gabarito assistido por IA
++
+revisão humana
+```
+
+e não:
+
+```text
+dupla revisão humana independente
+```
+
+Para um cenário de produção ou benchmark mais rigoroso, uma evolução seria
+utilizar revisão independente por duas ou mais pessoas e estabelecer um
+procedimento para resolução de divergências entre avaliadores.
+
+No escopo deste desafio, a decisão foi preservar essa limitação de forma
+explícita em vez de apresentar o gabarito como uma referência independente
+que ele não é.
+
+---
+
+## O benchmark é reproduzível
+
+A acurácia apresentada não foi inserida manualmente no relatório.
+
+Ela pode ser recalculada utilizando:
+
+```text
+gabarito.json
++
+saida_extracao_local_qwen25-7b.json
++
+avaliador.py
+```
+
+produzindo novamente:
+
+```text
+relatorio_acuracia_qwen25-7b.md
+```
+
+Na auditoria final do projeto, o relatório foi regenerado a partir desses
+artefatos e comparado com o arquivo versionado, sem divergências.
+
+Isso permite rastrear:
+
+```text
+entrada de referência
+→ saída do modelo
+→ regra de avaliação
+→ resultado reportado
+```
+
+---
+
+## 17 laudos não permitem generalização
+
+Os resultados observados pertencem ao conjunto de:
+
+```text
+17 laudos
+```
+
+fornecido para o desafio.
+
+A amostra é suficiente para testar o pipeline, encontrar falhas de schema,
+avaliar decisões de modelagem e observar erros do modelo neste conjunto,
+mas não permite afirmar que a mesma acurácia será obtida em laudos de outras
+origens, formatos ou distribuições.
+
+Portanto, os resultados são tratados como evidência do comportamento
+observado neste experimento, e não como estimativa universal de desempenho
+do modelo.
+
+---
+
+## Comparação entre Qwen3 1.7B e Qwen2.5 7B
+
+Os dois modelos foram executados sobre os mesmos 17 laudos e avaliados
+utilizando o mesmo gabarito.
+
+Foram observadas acurácias gerais de status de:
+
+```text
+Qwen3 1.7B      → 92,4%
+Qwen2.5 7B      → 92,9%
+```
+
+A diferença observada foi de aproximadamente:
+
+```text
+0,5 ponto percentual
+```
+
+Esse resultado descreve apenas este benchmark.
+
+Ele não demonstra que o Qwen2.5 7B seja universalmente superior ao
+Qwen3 1.7B.
+
+Além da métrica agregada, a escolha de modelo precisa considerar:
+
+```text
+qualidade por campo
+tempo de execução
+hardware disponível
+consumo de recursos
+robustez das respostas
+```
+
+---
+
+## A implementação Anthropic não faz parte do benchmark
+
+O `extrator.py` implementa uma alternativa utilizando a API da Anthropic,
+mas essa implementação não foi executada contra os mesmos 17 laudos durante
+o experimento.
+
+Por isso, o projeto não apresenta evidência experimental para afirmar que
+a API da Anthropic teria desempenho melhor ou pior que os modelos locais.
+
+Sua presença no repositório representa uma alternativa arquitetural
+implementada, e não um resultado de benchmark.
+
+---
+
+## Informação presente não significa informação verificada
+
+Os laudos 7 e 17 mostraram uma limitação do schema atual.
+
+Existem situações em que uma informação aparece explicitamente no documento,
+mas sua origem não foi documentalmente verificada.
+
+Exemplos observados incluem:
+
+```text
+ano de construção informado pelo proprietário
+```
+
+e:
+
+```text
+ausência de ônus declarada pelo proprietário sem certidão anexada
+```
+
+O schema atual possui apenas:
+
+```text
+presente
+ausente
+conflitante
+```
+
+Por isso, esses casos foram mantidos como `presente`, preservando a ressalva
+de procedência quando aplicável.
+
+Uma evolução considerada seria introduzir:
+
+```text
+nao_verificado
+```
+
+Essa alteração não foi aplicada retrospectivamente para evitar modificar o
+contrato de dados depois das execuções utilizadas no benchmark.
+
+---
+
+## O pipeline diferencia falha operacional de erro de extração
+
+Uma execução tecnicamente concluída não significa que todas as informações
+foram extraídas corretamente.
+
+São problemas diferentes:
+
+```text
+falha operacional
+→ arquivo não pôde ser processado corretamente
+
+erro de extração
+→ arquivo foi processado, mas algum campo foi interpretado incorretamente
+```
+
+O pipeline utiliza validação Pydantic e retry para reduzir respostas
+estruturalmente inválidas.
+
+Após a auditoria final, o processamento em lote também passou a sinalizar
+execução incompleta quando um ou mais arquivos falham, preservando os
+resultados válidos já produzidos para auditoria, mas retornando código de
+saída diferente de zero.
+
+Isso evita que um lote parcialmente processado seja interpretado como uma
+execução completamente bem-sucedida.
+
+---
+
+## Interpretação defendida para a Parte 3
+
+A principal evidência produzida nesta etapa não é que um determinado LLM
+possua uma taxa universal de acerto.
+
+O experimento demonstra a construção de um processo de extração auditável:
+
+```text
+laudo não estruturado
+        ↓
+LLM
+        ↓
+schema explícito
+        ↓
+validação determinística
+        ↓
+retry quando necessário
+        ↓
+saída estruturada
+        ↓
+comparação com gabarito
+        ↓
+métricas por campo
+        ↓
+análise das divergências
+```
+
+Essa arquitetura permite distinguir problemas provenientes:
+
+```text
+do modelo
+do schema
+do código
+do avaliador
+do próprio gabarito
+```
+
+em vez de resumir todo o comportamento do sistema em uma única métrica.
