@@ -8,11 +8,11 @@ A conversão geral observada foi de **19,39%**.
 
 ## Principais achados
 
-### 1. A maior perda financeira está na Análise de Crédito
+### 1. O maior volume solicitado não contratado está na Análise de Crédito
 
-A **etapa 3 — Análise de Crédito** concentra **35,1% de todo o valor perdido no funil**, equivalente a aproximadamente **R$ 703 milhões** em crédito solicitado.
+A **etapa 3 — Análise de Crédito** concentra **35,1% de todo o valor solicitado não contratado no funil**, equivalente a aproximadamente **R$ 703 milhões** em crédito solicitado.
 
-Considerando as perdas do funil por motivo, **60,8% do valor perdido** está associado a **desistência ou falta de retorno do cliente**, e não à reprovação de crédito.
+Considerando as propostas não contratadas por motivo, **60,8% do valor solicitado não contratado** está associado a **desistência ou falta de retorno do cliente**, e não à reprovação de crédito.
 
 Na própria etapa 3, `Desistiu` e `Sem retorno` somam **1.191 propostas**, representando aproximadamente **R$ 471,7 milhões** em valor solicitado.
 
@@ -42,7 +42,7 @@ A análise é descritiva e univariada: essas relações representam **associaç�
 
 Priorizar propostas paradas por desistência ou falta de retorno, especialmente as de maior valor.
 
-Na etapa 3, essas perdas somam **1.191 propostas e R$ 471,7 milhões em valor solicitado**.
+Na etapa 3, esses dois motivos somam **1.191 propostas e R$ 471,7 milhões em valor solicitado não contratado**.
 
 Em um cenário de sensibilidade no qual uma intervenção de processo recuperasse 10% desse valor, a oportunidade seria equivalente a aproximadamente **119 propostas e R$ 47,2 milhões** em crédito adicional ao longo do período analisado.
 
@@ -72,7 +72,7 @@ Após essa validação, pode-se decidir de forma segura entre alerta, renegocia�
 
 ## Conclusão
 
-O principal problema observado não é apenas a quantidade de propostas perdidas, mas **onde e por que o valor potencial está sendo perdido**.
+O principal problema observado não é apenas a quantidade de propostas não contratadas, mas **onde se concentra o valor solicitado que não chegou à contratação e quais motivos estão associados a esses desfechos**.
 
 A maior oportunidade operacional observada está na Análise de Crédito, principalmente na recuperação de propostas que não foram necessariamente reprovadas, mas deixaram o funil por desistência ou falta de retorno.
 
