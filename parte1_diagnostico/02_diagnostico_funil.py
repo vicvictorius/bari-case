@@ -5,12 +5,15 @@ em definicao_metricas.md:
   - conversão = Contratada / total de propostas
   - dinheiro perdido = soma de valor_solicitado das propostas não contratadas
 """
+from pathlib import Path
+
 import pandas as pd
 
 pd.set_option("display.max_columns", None)
 pd.set_option("display.width", 160)
 
-df = pd.read_csv("propostas_credito_tratado.csv", parse_dates=["data_entrada", "data_assinatura_contrato"])
+CSV_PATH = Path(__file__).resolve().parent / "propostas_credito_tratado.csv"
+df = pd.read_csv(CSV_PATH, parse_dates=["data_entrada", "data_assinatura_contrato"])
 TOTAL = len(df)
 CONTRATADAS = (df["status_final"] == "Contratada").sum()
 CONV_GERAL = CONTRATADAS / TOTAL

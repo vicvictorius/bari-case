@@ -3,12 +3,15 @@ Profiling bruto de propostas_credito.csv
 Objetivo: mapear a sujeira dos dados ANTES de qualquer tratamento.
 Nada aqui decide nada ainda — só descreve o que existe.
 """
+from pathlib import Path
+
 import pandas as pd
 
 pd.set_option("display.max_columns", None)
 pd.set_option("display.width", 160)
 
-df = pd.read_csv("../propostas_credito.csv", encoding="utf-8-sig", dtype=str)
+RAW_PATH = Path(__file__).resolve().parents[1] / "dados_brutos" / "Propostas_credito.csv"
+df = pd.read_csv(RAW_PATH, encoding="utf-8-sig", dtype=str)
 # Profiling bruto: lemos tudo como string de propósito, para não deixar o
 # pandas "resolver" silenciosamente problemas de formato (ex: "R$ 574857.06").
 # Conversões numéricas abaixo são só para inspeção, não é o tratamento final.

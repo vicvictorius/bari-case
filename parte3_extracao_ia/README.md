@@ -3,63 +3,193 @@
 Extrai 10 campos estruturados de cada um dos 17 laudos em texto livre
 (`../dados_brutos/laudos_avaliacao/`): tipo de imóvel, endereço, área
 privativa, área total, ano de construção, valor de avaliação, matrícula,
-ônus, data da vistoria, responsável técnico.
+ônus, data da vistoria e responsável técnico.
 
 ## Arquivos
 
 | Arquivo | O que faz |
 |---|---|
-| `schema.py` | Contrato de dados (Pydantic): cada campo tem `valor` + `status` (presente/ausente/conflitante) + `trecho_bruto` de evidência |
-| `extrator.py` | Pipeline via API da Anthropic (paga) — saída forçada por schema, valida, tenta de novo se inválido |
-| `extrator_local.py` | **Pipeline usado nesta entrega**: mesmo schema/prompt, mas via modelo local (Ollama), sem custo |
-| `construir_gabarito.py` | Gera `gabarito.json` a partir de uma leitura manual dos 17 laudos (rascunho para revisão — ver `decisoes.md`) |
-| `avaliador.py` | Compara a saída do extrator contra `gabarito.json` e gera um relatório de acurácia por campo |
-| `testes/test_avaliador.py` | Testes automatizados do avaliador, incluindo 3 erros típicos simulados e a normalização de valores |
-| `testes/test_extrator_local.py` | Testes do extrator local com um cliente Ollama simulado (parsing/validação/retry) |
-| `testes/test_schema.py` | Testes das regras de validação do schema (inclui regressão do bug do laudo_15) |
-| `decisoes.md` | Todas as decisões de modelagem e suas justificativas, incluindo a troca API→local |
+| `schema.py` | Contrato de dados (Pydantic): cada campo possui `valor`, `status` (`presente`, `ausente` ou `conflitante`) e `trecho_bruto` de evidência |
+| `extrator.py` | Pipeline alternativo via API da Anthropic, com saída estruturada, validação e nova tentativa quando a resposta é inválida |
+| `extrator_local.py` | Pipeline utilizado na execução real da entrega, via modelos locais com Ollama |
+| `construir_gabarito.py` | Gera `gabarito.json` a partir da leitura dos 17 laudos para posterior revisão |
+| `avaliador.py` | Compara a saída do extrator com `gabarito.json` e calcula acurácia por campo |
+| `gabarito.json` | Referência utilizada para avaliar as extrações |
+| `saida_extracao_local_qwen25-7b.json` | Resultado da execução dos 17 laudos com Qwen2.5 7B |
+| `relatorio_acuracia_qwen25-7b.md` | Avaliação por campo e divergências da execução com Qwen2.5 7B |
+| `testes/test_avaliador.py` | Testes automatizados do avaliador e da normalização dos valores |
+| `testes/test_extrator_local.py` | Testes do extrator local com cliente Ollama simulado |
+| `testes/test_schema.py` | Testes das regras de validação do schema, incluindo regressão de erro encontrado durante a execução real |
+| `decisoes.md` | Registro das decisões de modelagem, experimentos, limitações e trade-offs |
 
 ## Como rodar
 
+### Instalar as dependências
+
 ```bash
 pip install -r requirements.txt
+```
 
-# 1. gerar o gabarito
+### 1. Gerar o gabarito
+
+```bash
 python construir_gabarito.py --saida gabarito.json
+```
 
-# 2a. rodar a extração via modelo local (gratuito — caminho usado nesta entrega)
-#     pré-requisito: instalar Ollama (https://ollama.com) e baixar um modelo
-#     -- ver decisoes.md para escolha de modelo conforme sua RAM
+### 2. Executar a extração local
+
+Pré-requisito: possuir o Ollama instalado e um modelo disponível localmente.
+
+Exemplo com Qwen2.5 7B:
+
+```bash
 ollama pull qwen2.5:7b-instruct
-python extrator_local.py --entrada ../dados_brutos/laudos_avaliacao --saida saida_extracao_local.json
+```
 
-# 2b. alternativa: extração via API da Anthropic (paga, mais precisa)
-export ANTHROPIC_API_KEY="sua-chave"
-python extrator.py --entrada ../dados_brutos/laudos_avaliacao --saida saida_extracao.json
+Depois:
 
-# 3. medir a acurácia (mesmo avaliador para os dois caminhos)
-python avaliador.py --extracao saida_extracao_local.json --gabarito gabarito.json --relatorio relatorio_acuracia.md
+```bash
+python extrator_local.py \
+  --entrada ../dados_brutos/laudos_avaliacao \
+  --saida saida_extracao_local.json \
+  --modelo qwen2.5:7b-instruct
+```
 
-# testes (não precisam de Ollama nem de API key — usam clientes simulados/dados sintéticos)
+Também foi utilizado `qwen3:1.7b` durante o desenvolvimento para permitir
+a execução em hardware com menor quantidade de VRAM.
+
+### 3. Avaliar a extração
+
+```bash
+python avaliador.py \
+  --extracao saida_extracao_local.json \
+  --gabarito gabarito.json \
+  --relatorio relatorio_acuracia.md
+```
+
+O mesmo avaliador pode ser utilizado para comparar diferentes modelos
+contra o mesmo gabarito.
+
+### 4. Executar os testes
+
+```bash
 python -m pytest testes/ -v
 ```
 
-## Status nesta entrega
+Os testes não exigem Ollama nem acesso à API da Anthropic, pois utilizam
+clientes simulados e dados sintéticos quando necessário.
 
-`gabarito.json` gerado e validado. Dois pipelines de extração escritos e
-com a lógica de parsing/validação/retry testada: `extrator.py` (API da
-Anthropic, paga) e `extrator_local.py` (Ollama, gratuito — caminho
-escolhido para esta entrega por restrição de orçamento, ver `decisoes.md`).
+## Pipeline alternativo — Anthropic
 
-**Nenhum dos dois foi executado contra um modelo real nesta sessão de
-desenvolvimento** — o ambiente sandbox usado não tem `ANTHROPIC_API_KEY`
-configurada nem acesso ao domínio `ollama.com`/GPU para baixar e rodar um
-modelo local de verdade. `avaliador.py` foi testado com dados sintéticos
-(`testes/fixture_extracao_com_erros_sinteticos.json`, claramente marcado
-como não-real) para provar que o critério de acurácia detecta erros de
-fato — ver `testes/relatorio_demo_SINTETICO.md` para um exemplo do formato
-do relatório.
+Também foi implementado um extrator utilizando a API da Anthropic:
 
-**Pendência antes da entrega final**: instalar o Ollama, baixar o modelo,
-rodar `extrator_local.py` de verdade e substituir a demonstração sintética
-pelo `relatorio_acuracia.md` real.
+```bash
+export ANTHROPIC_API_KEY="sua-chave"
+
+python extrator.py \
+  --entrada ../dados_brutos/laudos_avaliacao \
+  --saida saida_extracao.json
+```
+
+Esse pipeline foi implementado e testado com clientes simulados, mas não
+foi executado contra a API real durante o desafio.
+
+A decisão de utilizar Ollama na execução final permitiu realizar o
+experimento localmente sem depender de uma API paga.
+
+---
+
+## Execuções realizadas
+
+### Qwen3 1.7B
+
+A primeira execução completa utilizou `qwen3:1.7b`.
+
+O modelo foi escolhido devido a uma limitação de hardware: na máquina
+inicial, equipada com uma NVIDIA GT 1030 de 2 GB de VRAM, o modelo
+Qwen2.5 7B executava majoritariamente em CPU e levava aproximadamente
+1–6 minutos por laudo.
+
+O Qwen3 1.7B permitiu executar os **17/17 laudos sem falha de pipeline**.
+
+A acurácia geral de status observada foi de:
+
+**92,4%**
+
+A auditoria das divergências revelou três tipos importantes de problema:
+
+1. uma falha de validação no schema, posteriormente corrigida;
+2. uma falha no método de comparação de valores do avaliador;
+3. uma limitação real do modelo ao diferenciar `area_privativa_m2` e
+   `area_total_m2` em determinados documentos.
+
+Esses casos levaram a alterações no schema, no avaliador e nos testes.
+
+### Qwen2.5 7B
+
+Posteriormente, uma segunda máquina com NVIDIA RTX 3050 de 4 GB permitiu
+executar o `qwen2.5:7b-instruct` de forma mais viável.
+
+O modelo foi avaliado utilizando os mesmos **17 laudos** e o mesmo
+gabarito.
+
+A acurácia geral de status foi:
+
+**92,9%**
+
+Resultado por campo:
+
+| Campo | Acurácia de status |
+|---|---:|
+| `tipo_imovel` | 94,1% |
+| `endereco` | 100,0% |
+| `area_privativa_m2` | 70,6% |
+| `area_total_m2` | 94,1% |
+| `ano_construcao` | 88,2% |
+| `valor_avaliacao_reais` | 100,0% |
+| `matricula` | 100,0% |
+| `onus` | 88,2% |
+| `data_vistoria` | 94,1% |
+| `responsavel_tecnico` | 100,0% |
+
+Os artefatos dessa execução estão disponíveis em:
+
+- [`saida_extracao_local_qwen25-7b.json`](saida_extracao_local_qwen25-7b.json)
+- [`relatorio_acuracia_qwen25-7b.md`](relatorio_acuracia_qwen25-7b.md)
+
+## Interpretação dos resultados
+
+A diferença de acurácia geral de status entre os dois experimentos foi
+pequena:
+
+| Modelo | Acurácia de status |
+|---|---:|
+| Qwen3 1.7B | 92,4% |
+| Qwen2.5 7B | 92,9% |
+
+O resultado reforça que uma única métrica agregada não é suficiente para
+avaliar a qualidade de um extrator.
+
+Um campo pode apresentar o `status` correto e ainda possuir um `valor`
+incorreto. Por isso, o avaliador também compara os valores extraídos e
+mantém as divergências disponíveis para auditoria.
+
+Os experimentos também mostraram um trade-off entre **tamanho do modelo,
+qualidade da extração, tempo de execução e hardware disponível**.
+
+## Limitações
+
+A avaliação possui algumas limitações conhecidas:
+
+- o conjunto contém apenas 17 laudos;
+- o gabarito foi revisado por uma única pessoa;
+- alguns campos exigem interpretação semântica mais complexa;
+- modelos menores apresentaram dificuldade na distinção entre áreas em
+  determinados formatos de laudo;
+- a acurácia observada neste conjunto não deve ser generalizada
+  automaticamente para documentos fora da amostra;
+- o pipeline via Anthropic não foi comparado experimentalmente com os
+  modelos locais.
+
+As decisões completas e os problemas encontrados durante o desenvolvimento
+estão documentados em [`decisoes.md`](decisoes.md).

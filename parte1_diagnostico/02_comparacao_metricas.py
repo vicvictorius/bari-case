@@ -2,9 +2,12 @@
 Comparação das definições candidatas de métricas operacionais.
 Não decide nada — só gera os números para decisão informada.
 """
+from pathlib import Path
+
 import pandas as pd
 
-df = pd.read_csv("propostas_credito_tratado.csv", parse_dates=["data_entrada", "data_assinatura_contrato"])
+CSV_PATH = Path(__file__).resolve().parent / "propostas_credito_tratado.csv"
+df = pd.read_csv(CSV_PATH, parse_dates=["data_entrada", "data_assinatura_contrato"])
 
 TOTAL = len(df)
 CONTRATADAS = (df["status_final"] == "Contratada").sum()

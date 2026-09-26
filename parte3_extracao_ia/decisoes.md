@@ -2,233 +2,777 @@
 
 ## Abordagem escolhida
 
-LLM (Claude, via API) com saída forçada por schema (Anthropic "tool use"),
-validada por Pydantic, com retry quando a validação falha. Regex não foi
-usado como extrator principal: nos 17 laudos, os mesmos campos aparecem em
-formatos suficientemente diferentes (valor por extenso, matrícula com/sem
-cartório, área em hectares vs. m²) para que uma lista de regex vire uma
-sequência de casos especiais que quebra no 18º laudo. Regras determinísticas
-entram como **auditoria pós-extração** (ex: checar se `valor` é numérico
-plausível), não como o extrator em si.
+LLM com saída estruturada por schema, validada por Pydantic, com retry quando
+a validação falha.
+
+A primeira implementação (`extrator.py`) foi construída para utilizar Claude
+via API da Anthropic com saída estruturada. Posteriormente, devido à restrição
+de custo da API, foi criada uma segunda implementação (`extrator_local.py`)
+utilizando modelos locais através do Ollama.
+
+Regex não foi usado como extrator principal: nos 17 laudos, os mesmos campos
+aparecem em formatos suficientemente diferentes — valor por extenso,
+matrícula com/sem cartório, áreas em unidades e contextos diferentes — para
+que uma estratégia baseada principalmente em regex exigisse diversos casos
+especiais.
+
+Regras determinísticas entram como **auditoria pós-extração**, por exemplo,
+para validar tipos, formatos e consistência da estrutura retornada pelo
+modelo, e não como o extrator principal.
+
+---
 
 ## Critério de acerto: gabarito manual
 
 Optamos por medir acurácia contra um gabarito construído por leitura humana
-dos 17 laudos (`construir_gabarito.py`), em vez de medir só a consistência
-do modelo entre execuções repetidas. Consistência mede estabilidade, não
-correção — um modelo pode errar da mesma forma em duas rodadas e "parecer"
-confiável. Acurácia por campo contra um gabarito lido com atenção é o que
-dá para defender concretamente na banca.
+dos 17 laudos (`construir_gabarito.py`), em vez de medir apenas a consistência
+do modelo entre execuções repetidas.
+
+Consistência mede estabilidade, não necessariamente correção: um modelo pode
+errar da mesma maneira em execuções diferentes e ainda assim parecer
+consistente.
+
+A comparação por campo contra um gabarito revisado permite avaliar de forma
+mais concreta onde a extração acertou ou divergiu.
 
 **Limitação registrada**: o rascunho do gabarito (`GABARITO_BRUTO` em
-`construir_gabarito.py`) foi produzido em conjunto com a IA nesta sessão —
-não é uma leitura 100% independente. Os campos com decisão de modelagem não
-trivial estão marcados com `# DECISÃO:` no próprio script, exatamente para
-serem revisados antes de virar gabarito final da entrega.
+`construir_gabarito.py`) foi produzido com apoio de IA durante o
+desenvolvimento e posteriormente revisado manualmente.
+
+Portanto, não se trata de uma leitura inicial 100% independente.
+
+Os campos com decisões de modelagem não triviais foram explicitamente
+documentados para que essas escolhas possam ser auditadas.
+
+---
 
 ## Campo ausente ou conflitante: `status` + `trecho_bruto`
 
-Cada campo carrega `status` (`presente` / `ausente` / `conflitante`) e,
-quando não é `presente`, um `trecho_bruto` obrigatório — o texto literal do
-laudo que justifica a classificação. Preferimos isso a um campo de
-observação em texto livre gerado pela própria IA, porque uma explicação da
-IA sobre o próprio erro é uma segunda camada de interpretação: se ela errar
-na explicação, isso não aparece sem reler o laudo de qualquer forma. Trecho
-bruto é evidência primária, auditável sem reabrir o documento original.
+Cada campo carrega:
 
-## Decisões de normalização (globais, aplicadas em todos os laudos)
+```text
+valor
+status
+trecho_bruto
+```
 
-- **Valores em R$**: convertidos para string numérica com ponto decimal,
-  sem separador de milhar (ex: `"642000.00"`). Valores por extenso só são
-  convertidos quando não há ambiguidade com o valor numérico ao lado
-  (ex: laudo_2, "seiscentos e oitenta mil reais (R$ 680.000)").
-- **Datas**: convertidas para ISO `AAAA-MM-DD`.
-- **Áreas**: sempre em m². Uma área em hectares (laudo_5) foi convertida
-  (4,8 ha = 48.000 m²) em vez de mantida na unidade original.
-- **Área privativa/total em casas e terrenos**: quando o laudo não usa os
-  termos "privativa"/"total" (comuns em apartamentos), mapeamos
-  área construída/edificada → `area_privativa_m2` e área de
-  terreno/lote → `area_total_m2`. É uma analogia, não uma equivalência
-  perfeita — um terreno de 600 m² com uma casa de 285 m² não é "totalmente
-  privativo mais áreas comuns" no mesmo sentido que um apartamento.
-  Alternativa não adotada por falta de tempo: um schema com campos
-  separados por tipo de imóvel (ex: `area_terreno_m2` só para
-  casas/terrenos). Ver autocrítica no Diário.
+O `status` pode assumir:
 
-## Casos em que optamos por "ausente" mesmo havendo texto sobre o campo
+```text
+presente
+ausente
+conflitante
+```
 
-- **Idade aproximada em vez de ano** (laudo_3, laudo_14): "idade aparente:
-  11 anos" não é "ano de construção: 2014". Calcular o ano a partir da
-  idade seria inferência (e a idade é explicitamente qualificada como
-  "aparente"/"aproximada"), não extração. Marcado `ausente`.
-- **Termo ambíguo "ano de referência"** (laudo_8): pode significar o
-  ano-base da avaliação de mercado usada como comparativo, não
-  necessariamente o ano de construção do imóvel. Marcado `ausente` em vez
-  de assumir a leitura mais óbvia.
-- **Área sem total explícito** (laudo_3): o laudo dá área útil e área comum
-  *proporcional* separadamente, mas nunca soma. Não somamos por conta
-  própria — isso seria inventar um número que o documento não afirma.
+Quando o campo não está simplesmente presente, `trecho_bruto` preserva o
+texto literal do laudo que justifica a classificação.
 
-## Limitação conhecida do modelo de status (3 estados): informação não verificada
+Preferimos isso a uma observação livre produzida pela própria IA porque uma
+explicação gerada pelo modelo adicionaria uma segunda camada de interpretação.
 
-Pelo menos 2 dos 17 laudos declaram um valor de forma explícita, mas sem
-lastro documental — não são casos isolados, são um padrão:
+O trecho original funciona como evidência primária e permite revisar a
+classificação sem depender apenas da explicação produzida pelo modelo.
 
-- **laudo_7**: "Ano de construção informado **pelo proprietário**: 2011" —
-  não é o perito quem afirma, é uma declaração de parte interessada.
-- **laudo_17**: "não há ônus, segundo **declaração do proprietário**;
-  certidão não anexada" — mesma estrutura: afirmação sem documento que a
-  sustente.
+---
 
-O schema atual só tem `presente` / `ausente` / `conflitante`, e nenhum dos
-três descreve bem "informado, mas por fonte não verificada" — não é
-ausência de informação, não é conflito entre duas informações, e tratar
-como `presente` simples esconde que a fonte é diferente de um dado aferido
-pelo próprio avaliador. Nos dois casos registramos como `presente`, com a
-ressalva de procedência embutida no próprio valor (ex: `"nenhum, segundo
-declaração do proprietário (certidão não anexada)"`), em vez de inventar
-uma categoria fora do schema documentado.
+## Decisões de normalização
 
-**Correção arquitetural, não implementada agora**: um 4º status
-(`nao_verificado`) resolveria isso de forma limpa. Não foi implementado
-neste momento porque `extrator_local.py` está com o schema de 3 status em
-execução — mudar o contrato de dados no meio de uma extração já rodando
-invalidaria o que já foi gerado. Fica registrado como o item mais concreto
-de "o que eu faria com mais 40 horas" no Diário (Parte 4): já sabemos
-exatamente qual mudança fazer e por que ela importa, só não foi prioridade
-frente ao prazo.
+As seguintes regras foram aplicadas de maneira consistente ao conjunto de
+laudos.
 
-## Mudança de motor de IA: API paga → modelo local (Ollama)
+### Valores em R$
 
-`extrator.py` (API da Anthropic) foi escrito primeiro, mas a API é paga
-(mínimo de US$5 de compra, cartão internacional habilitado) e essa despesa
-não era viável. Em vez de pular a Parte 3 ou fraudar uma execução,
-registramos a restrição como uma decisão de engenharia: construímos
-`extrator_local.py`, uma segunda implementação que usa o mesmo `schema.py`
-e o mesmo `PROMPT_SISTEMA`, mas chama um modelo rodando localmente via
-[Ollama](https://ollama.com) em vez da API. Mantivemos `extrator.py`
-funcional e documentado (não foi descartado) — é o caminho a seguir se
-houver acesso a crédito de API no futuro.
+Valores monetários são convertidos para representação numérica com ponto
+decimal e sem separador de milhar.
 
-**Trade-off esperado e assumido conscientemente**: um modelo local de 7-14B
-parâmetros é significativamente menos capaz em raciocínio e em seguir
-instruções sutis (como marcar `conflitante` no laudo_17 em vez de "resolver"
-a divergência sozinho) do que um modelo de fronteira via API. Isso é
-esperado — e é exatamente o tipo de limitação que o `avaliador.py` existe
-para medir e tornar visível, não para esconder.
+Exemplo:
 
-### Como rodar
+```text
+R$ 642.000,00
+→
+642000.00
+```
+
+Valores escritos por extenso são convertidos somente quando não existe
+ambiguidade com o valor apresentado no documento.
+
+---
+
+### Datas
+
+Datas são normalizadas para:
+
+```text
+AAAA-MM-DD
+```
+
+Exemplo:
+
+```text
+12/03/2025
+→
+2025-03-12
+```
+
+---
+
+### Áreas
+
+As áreas são representadas em metros quadrados.
+
+Quando o documento utiliza hectares, a unidade é convertida.
+
+Exemplo observado:
+
+```text
+4,8 ha
+→
+48000 m²
+```
+
+---
+
+### Área privativa e área total em casas e terrenos
+
+Quando o laudo não utiliza diretamente os termos `privativa` e `total`,
+adotamos:
+
+```text
+área construída / edificada
+→ area_privativa_m2
+
+área do terreno / lote
+→ area_total_m2
+```
+
+Essa é uma decisão de modelagem e não uma equivalência conceitual perfeita.
+
+Em um apartamento, área privativa e área total possuem significado diferente
+da relação entre área construída e área de terreno de uma casa.
+
+Uma alternativa seria utilizar schemas diferentes por tipo de imóvel, por
+exemplo:
+
+```text
+area_construida_m2
+area_terreno_m2
+```
+
+Essa mudança não foi implementada no escopo atual.
+
+---
+
+## Casos em que optamos por `ausente` mesmo havendo texto relacionado
+
+### Idade aproximada em vez de ano
+
+Nos laudos em que aparece algo como:
+
+```text
+idade aparente: 11 anos
+```
+
+não calculamos automaticamente o ano de construção.
+
+Transformar uma idade aproximada em um ano exato exigiria inferência adicional
+que o documento não afirma explicitamente.
+
+O campo foi classificado como:
+
+```text
+ausente
+```
+
+---
+
+### Termo ambíguo "ano de referência"
+
+Em um dos laudos aparece o termo:
+
+```text
+ano de referência
+```
+
+Esse termo pode representar o ano-base utilizado na avaliação e não
+necessariamente o ano de construção do imóvel.
+
+Optamos por não assumir a interpretação mais conveniente.
+
+O campo foi classificado como:
+
+```text
+ausente
+```
+
+---
+
+### Área sem total explícito
+
+Quando o documento apresenta componentes de área separadamente, mas não
+informa explicitamente a soma, não criamos um valor total por conta própria.
+
+Isso evita introduzir no dataset um número que não foi declarado pelo
+documento.
+
+---
+
+## Limitação conhecida do modelo de status: informação não verificada
+
+Durante a leitura dos laudos apareceu uma situação que não é representada
+adequadamente pelos três estados atuais.
+
+Em pelo menos dois documentos existe uma informação explícita, mas cuja
+origem não foi documentalmente verificada.
+
+### Laudo 7
+
+O documento informa:
+
+```text
+Ano de construção informado pelo proprietário: 2011
+```
+
+A informação existe, mas sua fonte é uma declaração do proprietário.
+
+### Laudo 17
+
+O documento informa que não existem ônus segundo declaração do proprietário,
+mas também informa que a certidão não foi anexada.
+
+Novamente, existe informação, porém com uma procedência diferente de um dado
+documentalmente verificado.
+
+O schema atual possui apenas:
+
+```text
+presente
+ausente
+conflitante
+```
+
+Nenhum desses estados descreve perfeitamente:
+
+```text
+informação presente, mas não verificada
+```
+
+Nos casos atuais, mantivemos `presente` e preservamos a ressalva de
+procedência no próprio conteúdo extraído.
+
+---
+
+## Evolução arquitetural considerada: `nao_verificado`
+
+Uma solução mais adequada seria adicionar um quarto estado:
+
+```text
+nao_verificado
+```
+
+O schema passaria a representar:
+
+```text
+presente
+ausente
+conflitante
+nao_verificado
+```
+
+Essa mudança não foi implementada porque alteraria o contrato de dados
+utilizado durante as execuções já realizadas.
+
+Ela foi registrada como uma das principais evoluções que seriam realizadas
+com mais tempo disponível.
+
+---
+
+# Mudança de motor de IA: API paga → modelo local
+
+`extrator.py`, utilizando a API da Anthropic, foi desenvolvido primeiro.
+
+Durante o desenvolvimento, entretanto, o uso da API exigia crédito pago e
+essa despesa não foi adotada para o desafio.
+
+Em vez de remover a Parte 3 ou apresentar uma execução que não ocorreu, essa
+restrição foi tratada como uma decisão de engenharia.
+
+Foi criado:
+
+```text
+extrator_local.py
+```
+
+A implementação utiliza o mesmo contrato de dados e as mesmas regras
+principais de extração, mas envia as solicitações para um modelo executado
+localmente através do Ollama.
+
+O `extrator.py` foi mantido no projeto como uma implementação alternativa,
+mas **não foi executado contra a API real nos 17 laudos**.
+
+---
+
+## Trade-off esperado ao utilizar modelos locais
+
+Ao optar por modelos locais menores, considerei como hipótese que limitações
+de capacidade poderiam aparecer principalmente em instruções semanticamente
+sutis, como distinguir informação presente de informação conflitante.
+
+Em vez de assumir essa diferença como fato, o `avaliador.py` foi criado
+justamente para medir o comportamento observado e tornar os erros visíveis.
+
+Como a implementação via API da Anthropic não foi executada contra os 17
+laudos, este projeto não produz evidência experimental para afirmar que ela
+teria acurácia superior aos modelos locais utilizados.
+
+---
+
+## Como rodar
+
+Primeiro, instalar o Ollama e baixar um modelo compatível.
+
+Exemplo:
 
 ```bash
-# 1. instalar o Ollama (uma vez): https://ollama.com/download
-# 2. baixar um modelo (uma vez) -- ver escolha de modelo abaixo
 ollama pull qwen2.5:7b-instruct
+```
 
-# 3. rodar a extração
-python extrator_local.py --entrada ../dados_brutos/laudos_avaliacao \
-    --saida saida_extracao_local.json --modelo qwen2.5:7b-instruct
+Executar a extração:
 
-# 4. medir a acurácia (mesmo avaliador da versão via API)
-python avaliador.py --extracao saida_extracao_local.json --gabarito gabarito.json \
+```bash
+python extrator_local.py \
+    --entrada ../dados_brutos/laudos_avaliacao \
+    --saida saida_extracao_local.json \
+    --modelo qwen2.5:7b-instruct
+```
+
+Depois executar o avaliador:
+
+```bash
+python avaliador.py \
+    --extracao saida_extracao_local.json \
+    --gabarito gabarito.json \
     --relatorio relatorio_acuracia_local.md
 ```
 
-### Escolha de modelo (ajustar conforme a RAM disponível)
+---
 
-| RAM livre | Modelo sugerido | Observação |
+## Escolha de modelo e hardware
+
+A escolha do modelo depende diretamente dos recursos disponíveis.
+
+Durante o desenvolvimento, foram testadas duas configurações principais:
+
+| Ambiente | Modelo | Contexto |
 |---|---|---|
-| 8 GB | `llama3.2:3b` ou `qwen2.5:3b-instruct` | Mais rápido, mais provável de errar nos campos ambíguos (laudo_3, laudo_8, laudo_17) |
-| 16 GB | `qwen2.5:7b-instruct` (padrão do script) | Bom equilíbrio para extração estruturada |
-| 32 GB+ / GPU dedicada | `qwen2.5:14b-instruct` | Melhor chance de seguir as regras de "não chutar" corretamente |
+| GT 1030 — 2 GB VRAM | Qwen3 1.7B | Modelo menor utilizado para viabilizar a primeira execução completa |
+| RTX 3050 — 4 GB VRAM | Qwen2.5 7B | Utilizada posteriormente para executar o benchmark com o modelo maior |
 
-Qualquer um roda 100% offline depois de baixado — sem custo por chamada,
-sem limite de requisições, sem dado saindo da sua máquina.
+Depois de baixado, o modelo pode ser executado localmente através do Ollama,
+sem enviar os laudos para uma API externa.
 
-### Limitação de execução nesta sessão de desenvolvimento
+---
 
-Este sandbox de desenvolvimento não tem acesso ao domínio `ollama.com` nem
-GPU para baixar/rodar um modelo de verdade, então `extrator_local.py` foi
-validado com um **cliente Ollama simulado**
-(`testes/test_extrator_local.py`) que prova que o parsing, a validação
-Pydantic e a lógica de retry funcionam corretamente — não que o modelo
-real produz boas extrações. Isso só se mede rodando de fato na sua
-máquina. Antes da entrega final, rode o pipeline real (passos acima) e
-revise o `relatorio_acuracia_local.md` gerado — é bem provável que a
-acurácia fique abaixo da que se obteria com a API paga, especialmente nos
-campos com decisão sutil (`area_total_m2`, `ano_construcao`, `onus`). Isso
-não é um problema a esconder: é material direto para a autocrítica do
-Diário ("o que eu faria com mais 40 horas" = acesso a um modelo melhor).
+# Limitação inicial do ambiente de desenvolvimento
 
-## Execução real com `qwen3:1.7b`: 92,4% de acurácia de status, três achados
+Durante uma etapa inicial do desenvolvimento, o ambiente utilizado para
+construção e teste do pipeline não permitia executar um modelo real através
+do Ollama.
 
-A extração real rodou (17/17 sem falha de pipeline) usando `qwen3:1.7b`
-(2B parâmetros — o menor dos dois modelos baixados, não o `qwen2.5:7b`
-que era o padrão do script, por limitação de GPU — ver abaixo). O
-relatório inicial mostrou 92,4% de acurácia de status, mas a lista de
-divergências linha a linha revelou três achados de naturezas bem
-diferentes, que teriam ficado misturados num único número:
+Nesse momento, `extrator_local.py` foi validado utilizando um cliente Ollama
+simulado em:
 
-**1. Bug de validação nosso, corrigido**: o laudo_15 voltou com quase todo
-campo `status="presente"` mas `valor=None` — o modelo colocava a resposta
-certa em `trecho_bruto` (ex: `trecho_bruto: "Ano 2003."` com `valor: null`
-para `ano_construcao`) em vez de em `valor`. O schema original só exigia
-`trecho_bruto` quando o status NÃO era `presente` — nunca exigiu o
-inverso (`valor` obrigatório quando `presente`), então essa saída
-semanticamente inválida passava pela validação Pydantic sem disparar
-retry. Corrigido em `schema.py` com um segundo `model_validator`
-(`valor_obrigatorio_se_presente`) e coberto por teste de regressão em
-`testes/test_schema.py::test_presente_sem_valor_e_rejeitado`. Rodando de
-novo, esse laudo específico agora deve forçar o modelo a corrigir a saída
-via retry, ou falhar explicitamente — não mais aceitar silenciosamente.
+```text
+testes/test_extrator_local.py
+```
 
-**2. Falha nossa de medição, corrigida**: boa parte das divergências de
-"valor" reportadas não eram erro de extração — eram formatação que
-`normalizar_valor` não tratava como equivalente (`78,40` vs `78.40`,
-`642000` vs `642000.00`, `12/03/2025` vs `2025-03-12`, `201.443` vs
-`201443`). `avaliador.py` foi atualizado para interpretar número (formato
-BR e US) e data antes de comparar, em vez de comparar string crua. Isso
-não muda a acurácia de *status* (já estava correta), só a de *valor* —
-que deve subir depois desse ajuste. Testado em
-`testes/test_avaliador.py` com os pares reais que apareceram no
-relatório.
+Esses testes validavam:
 
-**3. Limitação real do modelo, não corrigível em código**: nos laudos 5,
-7 e 9, o modelo trocou `area_privativa_m2` ↔ `area_total_m2` — sempre nos
-casos em que o laudo menciona "terreno/lote" *antes* de
-"construída/edificada" no texto. Padrão consistente com o modelo mapeando
-os números pela ordem em que aparecem no documento, não pelo significado
-semântico (que é exatamente a regra de `decisoes.md` sobre área
-privativa/total em casas e terrenos). Isso é uma limitação de raciocínio
-do modelo de 2B parâmetros, não um bug de código — citado como candidato
-a melhorar com um modelo maior (`qwen2.5:14b` ou a API paga).
+```text
+parsing
+validação Pydantic
+retry
+tratamento de respostas inválidas
+```
 
-### Limitação de hardware que forçou o modelo menor
+mas não permitiam concluir nada sobre a qualidade real das extrações
+produzidas pelo modelo.
 
-O modelo padrão do script (`qwen2.5:7b-instruct`, 5,1GB) só conseguiu
-rodar ~4% na GPU (NVIDIA GT 1030, 2GB de VRAM — insuficiente para o
-modelo inteiro) e ~96% na CPU, levando 1-6 min por laudo. A extração
-reportada acima usou `qwen3:1.7b` (1,3GB, cabe na GPU) por ser
-significativamente mais rápido nesse hardware — outro trade-off
-custo/tempo vs. qualidade assumido conscientemente, documentado aqui em
-vez de escondido atrás de um número de acurácia sem contexto.
+Naquele momento do desenvolvimento, isso significava que a qualidade do
+modelo real ainda precisava ser medida na máquina local.
 
-### Migração de hardware: GT 1030 (2GB) → RTX 3050 (4GB)
+Posteriormente, essa etapa foi concluída: o pipeline foi executado nos 17
+laudos com `qwen3:1.7b` e, depois, com `qwen2.5:7b-instruct`.
 
-Depois da rodada acima, identificamos uma segunda máquina disponível (PC
-Windows com RTX 3050, 4GB de VRAM) que permite rodar o modelo maior
-(`qwen2.5:7b-instruct`, 5,1GB) com uma fração bem maior na GPU do que os
-4% possíveis na GT 1030 — mesmo sem caber inteiro nos 4GB, o ganho de
-velocidade esperado é grande o suficiente para tornar o `qwen2.5:7b`
-viável nesse hardware, ao contrário do que acontecia na GT 1030.
+Os resultados dessas execuções estão documentados nas seções seguintes.
 
-Plano: rodar `extrator_local.py --modelo qwen2.5:7b-instruct` no PC
-Windows e comparar o `relatorio_acuracia.md` resultante com o gerado pelo
-`qwen3:1.7b` (seção acima) — em vez de simplesmente substituir um
-resultado pelo outro. A comparação entre os dois modelos, rodando no
-mesmo gabarito e a mesma base de 17 laudos, é evidência mais forte do
-trade-off tamanho-do-modelo vs. qualidade do que qualquer um dos dois
-números isolado.
+A implementação via Anthropic permaneceu sem execução contra a API real;
+portanto, não foi feita comparação experimental de acurácia entre a API
+paga e os modelos locais.
 
-**Pendência**: os resultados do `qwen2.5:7b-instruct` no hardware novo
-ainda não foram gerados. Quando estiverem, esta seção deve ser
-atualizada com os números reais e a comparação lado a lado.
+---
+
+# Execução real com Qwen3 1.7B
+
+A primeira execução real completa utilizou:
+
+```text
+qwen3:1.7b
+```
+
+Foram processados:
+
+```text
+17/17 laudos
+```
+
+sem falha do pipeline.
+
+O relatório inicial apresentou:
+
+```text
+92,4% de acurácia geral de status
+```
+
+A análise das divergências revelou três tipos diferentes de problema.
+
+---
+
+## 1. Bug de validação do schema
+
+No `laudo_15`, o modelo produziu campos com:
+
+```text
+status = "presente"
+valor = None
+```
+
+enquanto a informação correta aparecia em `trecho_bruto`.
+
+Exemplo conceitual:
+
+```text
+status: presente
+valor: null
+trecho_bruto: "Ano 2003."
+```
+
+O schema original exigia `trecho_bruto` quando o status não era `presente`,
+mas não verificava a regra inversa:
+
+```text
+status = presente
+→ valor deve existir
+```
+
+Assim, uma resposta semanticamente inválida conseguia passar pela validação
+Pydantic.
+
+A correção foi adicionada em `schema.py` através de um segundo
+`model_validator`.
+
+Também foi criado o teste de regressão:
+
+```text
+testes/test_schema.py::test_presente_sem_valor_e_rejeitado
+```
+
+Depois da mudança, esse estado contraditório deixa de ser aceito
+silenciosamente e passa a acionar o mecanismo de retry ou falhar
+explicitamente.
+
+---
+
+## 2. Problema no próprio avaliador
+
+Parte das divergências inicialmente classificadas como erro de valor não
+representava erros reais de extração.
+
+Exemplos:
+
+```text
+78,40
+78.40
+
+642000
+642000.00
+
+12/03/2025
+2025-03-12
+
+201.443
+201443
+```
+
+O avaliador comparava representações textuais em situações em que deveria
+comparar o significado numérico ou temporal.
+
+`avaliador.py` foi atualizado para normalizar números e datas antes da
+comparação.
+
+Essa mudança não altera a acurácia de `status`.
+
+Ela melhora a avaliação dos valores extraídos, evitando classificar
+diferenças puramente de formatação como erros do modelo.
+
+Casos reais encontrados durante a avaliação foram transformados em testes em:
+
+```text
+testes/test_avaliador.py
+```
+
+---
+
+## 3. Limitação observada no modelo
+
+Nos laudos 5, 7 e 9, o Qwen3 1.7B apresentou trocas entre:
+
+```text
+area_privativa_m2
+area_total_m2
+```
+
+Esses casos aparecem em documentos nos quais os conceitos de terreno/lote e
+área construída/edificada precisam ser associados aos campos definidos pelo
+schema.
+
+O padrão observado é compatível com uma dificuldade do modelo em aplicar a
+regra semântica de mapeamento de áreas nesses documentos.
+
+Como o pipeline estava estruturalmente correto e o erro aparecia no conteúdo
+extraído, esse comportamento foi registrado como uma limitação observada do
+modelo, e não corrigido artificialmente após a geração.
+
+---
+
+# Limitação de hardware da primeira execução
+
+O modelo inicialmente previsto:
+
+```text
+qwen2.5:7b-instruct
+```
+
+ocupava aproximadamente 5,1 GB.
+
+Na máquina inicial, equipada com:
+
+```text
+NVIDIA GT 1030
+2 GB VRAM
+```
+
+apenas uma pequena fração do modelo conseguia permanecer na GPU, enquanto a
+maior parte da execução ocorria na CPU.
+
+Na execução observada, aproximadamente 4% ficava na GPU e 96% na CPU,
+resultando em tempos de aproximadamente:
+
+```text
+1–6 minutos por laudo
+```
+
+Por esse motivo, a primeira execução completa utilizou:
+
+```text
+qwen3:1.7b
+```
+
+com aproximadamente 1,3 GB, adequado ao hardware disponível.
+
+Essa foi uma decisão explícita de engenharia envolvendo:
+
+```text
+tempo de execução
+hardware disponível
+tamanho do modelo
+qualidade da extração
+```
+
+---
+
+# Migração de hardware: GT 1030 → RTX 3050
+
+Depois da primeira rodada, foi identificada uma segunda máquina disponível:
+
+```text
+NVIDIA RTX 3050
+4 GB VRAM
+```
+
+Embora o Qwen2.5 7B ainda não coubesse integralmente nos 4 GB de VRAM, essa
+configuração tornou sua execução mais viável do que na GT 1030.
+
+Isso permitiu realizar o benchmark que inicialmente não era prático no
+hardware anterior.
+
+---
+
+# Resultado do benchmark com Qwen2.5 7B
+
+O benchmark foi posteriormente executado no PC Windows com RTX 3050 de 4 GB,
+utilizando o mesmo conjunto de 17 laudos e o mesmo gabarito da execução
+anterior.
+
+O:
+
+```text
+qwen2.5:7b-instruct
+```
+
+processou:
+
+```text
+17/17 laudos
+```
+
+e apresentou:
+
+```text
+92,9% de acurácia geral de status
+```
+
+contra:
+
+```text
+92,4%
+```
+
+observados anteriormente com o Qwen3 1.7B.
+
+A diferença na métrica agregada foi, portanto, de:
+
+```text
+0,5 ponto percentual
+```
+
+Apesar do modelo maior, essa diferença pequena reforçou que a escolha de
+modelo não deve ser baseada apenas no número de parâmetros ou em uma única
+métrica agregada.
+
+---
+
+## Resultado por campo
+
+A avaliação por campo mostrou diferenças importantes.
+
+No Qwen2.5 7B:
+
+| Campo | Acurácia de status |
+|---|---:|
+| `tipo_imovel` | 94,1% |
+| `endereco` | 100,0% |
+| `area_privativa_m2` | 70,6% |
+| `area_total_m2` | 94,1% |
+| `ano_construcao` | 88,2% |
+| `valor_avaliacao_reais` | 100,0% |
+| `matricula` | 100,0% |
+| `onus` | 88,2% |
+| `data_vistoria` | 94,1% |
+| `responsavel_tecnico` | 100,0% |
+
+`area_privativa_m2`, por exemplo, apresentou apenas 70,6% de acurácia de
+status, enquanto endereço, valor de avaliação, matrícula e responsável
+técnico atingiram 100% neste conjunto.
+
+Isso demonstra por que a métrica agregada não é suficiente para avaliar o
+comportamento do extrator.
+
+---
+
+## Status correto não significa valor correto
+
+Além do `status`, o avaliador compara o valor extraído quando a informação
+está presente.
+
+Essa análise revelou uma distinção importante:
+
+```text
+status correto
+≠
+valor necessariamente correto
+```
+
+Por exemplo, um modelo pode identificar corretamente que uma área está
+presente no documento, mas associar o número à área errada.
+
+Por isso, o relatório preserva a análise das divergências por campo e não
+utiliza apenas a acurácia agregada como critério de qualidade.
+
+---
+
+## Artefatos preservados
+
+Os artefatos da execução com Qwen2.5 7B foram preservados em:
+
+```text
+saida_extracao_local_qwen25-7b.json
+relatorio_acuracia_qwen25-7b.md
+```
+
+Esses arquivos permitem revisar tanto a saída produzida pelo modelo quanto
+as divergências identificadas pelo avaliador.
+
+---
+
+# Interpretação final do benchmark
+
+A comparação entre as duas execuções tornou explícito o trade-off entre:
+
+```text
+tamanho do modelo
+qualidade por campo
+tempo de execução
+hardware disponível
+```
+
+O Qwen3 1.7B tornou possível executar o pipeline de forma mais adequada no
+hardware inicial.
+
+Posteriormente, a disponibilidade da RTX 3050 permitiu avaliar o Qwen2.5 7B
+utilizando os mesmos 17 laudos e o mesmo gabarito.
+
+Os resultados não são tratados como evidência de que um dos modelos seja
+universalmente superior ao outro.
+
+A amostra contém apenas:
+
+```text
+17 laudos
+```
+
+e existem diferenças relevantes entre:
+
+```text
+acurácia de status
+acurácia dos valores extraídos
+qualidade por campo
+tempo de execução
+requisitos de hardware
+```
+
+Além disso, como a implementação Anthropic não foi executada nos mesmos 17
+laudos, não existe neste projeto um benchmark experimental que permita
+comparar diretamente sua acurácia com a dos modelos locais.
+
+A principal conclusão da Parte 3 não é que determinado modelo "vence", mas
+que uma solução de extração estruturada precisa combinar:
+
+```text
+LLM
++
+schema explícito
++
+validação determinística
++
+retry
++
+gabarito
++
+métrica de avaliação
++
+auditoria das divergências
+```
+
+Isso permite que erros do modelo, erros do próprio código e erros da métrica
+de avaliação sejam identificados separadamente, em vez de escondidos dentro
+de um único número de acurácia.
