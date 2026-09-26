@@ -17,6 +17,7 @@ sys.path.insert(0, str(RAIZ))
 from parte2_automacao.relatorio_semanal import (
     ErroEntrada, SCRIPT_FILTROS, calcular, gerar_html, gravar_html, ler_e_tratar, main, periodo,
     preparar_filtros,
+    grafico_perdas,
 )
 from pipeline.tratamento import tratar_dados
 
@@ -183,21 +184,175 @@ def analisar_html(html):
 
 
 def test_html_contem_controles_json_minimo_e_nenhum_recurso_externo():
-    html = gerar_html(calcular(dados_metricas(), date(2026, 1, 5)), "entrada.csv")
-    doc = analisar_html(html)
-    assert doc.elementos["filtro-canal"][0] == "select"
-    assert doc.elementos["filtro-etapa"][0] == "select"
-    assert doc.elementos["limpar-filtros"][0] == "button"
-    assert '<option value="0">Todos</option>' in html
-    assert '<option value="0">Todas</option>' in html
-    assert doc.elementos["dados-filtros"][1]["type"] == "application/json"
-    dados = json.loads(doc.scripts["dados-filtros"])
-    assert set(dados) == {"canais", "resultados"}
-    assert dados["resultados"][0][0] == ["2", "1", "50,00%", "500,00", "300,00"]
-    assert "id_proposta" not in doc.scripts["dados-filtros"]
-    assert not any(s in html.lower() for s in ("http://", "https://", "fetch(", "xmlhttprequest", "@import", "url("))
-    assert "Semana anterior, acumulado e tabelas abaixo permanecem sem filtros" in html
+    html = gerar_html(
+        calcular(
+            dados_metricas(),
+            date(2026, 1, 5),
+        ),
+        "entrada.csv",
+    )
 
+    doc = analisar_html(html)
+
+    assert (
+        doc.elementos[
+            "filtro-canal"
+        ][0]
+        == "select"
+    )
+
+    assert (
+        doc.elementos[
+            "filtro-etapa"
+        ][0]
+        == "select"
+    )
+
+    assert (
+        doc.elementos[
+            "limpar-filtros"
+        ][0]
+        == "button"
+    )
+
+    assert (
+        doc.elementos[
+            "kpi-total"
+        ][0]
+        == "strong"
+    )
+
+    assert (
+        doc.elementos[
+            "kpi-contratadas"
+        ][0]
+        == "strong"
+    )
+
+    assert (
+        doc.elementos[
+            "kpi-conversao"
+        ][0]
+        == "strong"
+    )
+
+    assert (
+        doc.elementos[
+            "kpi-solicitado"
+        ][0]
+        == "strong"
+    )
+
+    assert (
+        doc.elementos[
+            "kpi-perdido"
+        ][0]
+        == "strong"
+    )
+
+    assert (
+        '<option value="0">Todos</option>'
+        in html
+    )
+
+    assert (
+        '<option value="0">Todas</option>'
+        in html
+    )
+
+    assert (
+        doc.elementos[
+            "dados-filtros"
+        ][1]["type"]
+        == "application/json"
+    )
+
+    dados = json.loads(
+        doc.scripts[
+            "dados-filtros"
+        ]
+    )
+
+    assert set(dados) == {
+        "canais",
+        "resultados",
+    }
+
+    assert (
+        dados["resultados"][0][0]
+        == [
+            "2",
+            "1",
+            "50,00%",
+            "500,00",
+            "300,00",
+        ]
+    )
+
+    assert (
+        "id_proposta"
+        not in doc.scripts[
+            "dados-filtros"
+        ]
+    )
+
+    assert not any(
+        trecho in html.lower()
+        for trecho in (
+            "http://",
+            "https://",
+            "fetch(",
+            "xmlhttprequest",
+            "@import",
+            "url(",
+        )
+    )
+
+    assert (
+        "Semana anterior, acumulado e tabelas analíticas abaixo"
+        in html
+    )
+
+    assert (
+        "permanecem sem filtros"
+        in html
+    )
+
+def test_grafico_perdas_exibe_etapas_valores_e_barras_proporcionais():
+    m = calcular(
+        dados_metricas(),
+        date(2026, 1, 5),
+    )
+
+    html = grafico_perdas(
+        m["perdas"]
+    )
+
+    assert (
+        'class="grafico-perdas"'
+        in html
+    )
+
+    assert (
+        "3 — Análise de crédito"
+        in html
+    )
+
+    assert "R$ 300,00" in html
+
+    texto_normalizado = " ".join(
+        html.split()
+    )
+
+    assert (
+        "1 proposta não contratada"
+        in texto_normalizado
+    )
+
+    assert (
+        "width:100.00%"
+        in html
+    )
 
 def test_filtros_intersecao_uma_proposta_e_zero_resultados():
     dados = calcular(dados_metricas(), date(2026, 1, 5))["filtros"]
@@ -238,68 +393,410 @@ def test_exemplo_sem_filtros_preserva_os_cinco_indicadores():
 
 
 @pytest.mark.parametrize("vazia", [False, True])
-def test_javascript_aplica_combina_limpa_e_preserva_colunas_historicas(vazia):
-    # Opcional: usa somente um Node já disponível; nunca instala um runtime.
-    node = os.environ.get("BARI_NODE") or shutil.which("node")
+def test_javascript_aplica_combina_limpa_e_preserva_colunas_historicas(
+    vazia,
+):
+    # Opcional: usa somente um Node já disponível;
+    # nunca instala um runtime.
+    node = (
+        os.environ.get("BARI_NODE")
+        or shutil.which("node")
+    )
+
     if not node:
-        pytest.skip("Node não disponível; cálculos e contrato HTML cobertos pelos testes Python.")
-    m = calcular(dados_metricas(), date(2026, 9, 28) if vazia else date(2026, 1, 5))
+        pytest.skip(
+            "Node não disponível; cálculos e contrato HTML "
+            "cobertos pelos testes Python."
+        )
+
+    m = calcular(
+        dados_metricas(),
+        (
+            date(2026, 9, 28)
+            if vazia
+            else date(2026, 1, 5)
+        ),
+    )
+
     runner = r"""
 const assert = require('node:assert/strict');
 const vm = require('node:vm');
 const fs = require('node:fs');
-const entrada = JSON.parse(fs.readFileSync(0, 'utf8'));
-const nodes = {};
-function select(labels) {
-    return {value: '0', options: labels.map(textContent => ({textContent})),
-        get selectedIndex() { return Number(this.value); },
-        addEventListener(event, callback) { this[event] = callback; }};
-}
-nodes['dados-filtros'] = {textContent: JSON.stringify(entrada.dados)};
-nodes['filtro-canal'] = select(['Todos', ...entrada.dados.canais]);
-nodes['filtro-etapa'] = select(['Todas', '1', '2', '3', '4', '5', '6']);
-nodes['limpar-filtros'] = {addEventListener(event, callback) { this[event] = callback; }};
-nodes['situacao-filtros'] = {textContent: ''};
-nodes['controles-filtros'] = {disabled: true};
-const rows = Array.from({length: 5}, () => ({cells: [
-    {textContent: 'Indicador'}, {textContent: ''},
-    {textContent: 'Anterior intacto'}, {textContent: 'Acumulado intacto'}]}));
-const header = {textContent: 'Semana selecionada'};
-nodes['resumo-semanal'] = {tHead: {rows: [{cells: [{}, header]}]}, tBodies: [{rows}]};
-vm.runInNewContext(entrada.script, {document: {getElementById(id) { return nodes[id]; }}});
-const valores = () => rows.map(r => r.cells[1].textContent);
-const zero = ['0', '0', 'Não aplicável', '0,00', '0,00'];
-const original = entrada.vazia ? zero : ['2', '1', '50,00%', '500,00', '300,00'];
-assert.deepEqual(valores(), original);
-assert.equal(nodes['controles-filtros'].disabled, false);
-if (!entrada.vazia) {
-    nodes['filtro-canal'].value = '1';
-    nodes['filtro-canal'].change();
-    assert.deepEqual(valores(), ['1', '1', '100,00%', '200,00', '0,00']);
-    nodes['filtro-etapa'].value = '3';
-    nodes['filtro-etapa'].change();
-    assert.deepEqual(valores(), zero);
-    assert.match(nodes['situacao-filtros'].textContent, /Sem propostas/);
-    assert.equal(header.textContent, 'Semana selecionada — filtros aplicados');
-    nodes['filtro-canal'].value = '2';
-    nodes['filtro-canal'].change();
-    assert.deepEqual(valores(), ['1', '0', '0,00%', '300,00', '300,00']);
-}
-nodes['limpar-filtros'].click();
-assert.equal(nodes['filtro-canal'].value, '0');
-assert.equal(nodes['filtro-etapa'].value, '0');
-assert.equal(header.textContent, 'Semana selecionada');
-assert.deepEqual(valores(), original);
-rows.forEach(r => {
-    assert.equal(r.cells[2].textContent, 'Anterior intacto');
-    assert.equal(r.cells[3].textContent, 'Acumulado intacto');
-});
-"""
-    resultado = subprocess.run([node, "-e", runner], input=json.dumps({
-        "dados": m["filtros"], "script": SCRIPT_FILTROS, "vazia": vazia,
-    }), capture_output=True, text=True, encoding="utf-8")
-    assert resultado.returncode == 0, resultado.stderr
 
+const entrada = JSON.parse(
+    fs.readFileSync(0, 'utf8')
+);
+
+const nodes = {};
+
+function select(labels) {
+    return {
+        value: '0',
+
+        options: labels.map(
+            textContent => ({
+                textContent
+            })
+        ),
+
+        get selectedIndex() {
+            return Number(this.value);
+        },
+
+        addEventListener(
+            event,
+            callback
+        ) {
+            this[event] = callback;
+        }
+    };
+}
+
+nodes['dados-filtros'] = {
+    textContent: JSON.stringify(
+        entrada.dados
+    )
+};
+
+nodes['filtro-canal'] = select(
+    [
+        'Todos',
+        ...entrada.dados.canais
+    ]
+);
+
+nodes['filtro-etapa'] = select(
+    [
+        'Todas',
+        '1',
+        '2',
+        '3',
+        '4',
+        '5',
+        '6'
+    ]
+);
+
+nodes['limpar-filtros'] = {
+    addEventListener(
+        event,
+        callback
+    ) {
+        this[event] = callback;
+    }
+};
+
+nodes['situacao-filtros'] = {
+    textContent: ''
+};
+
+nodes['controles-filtros'] = {
+    disabled: true
+};
+
+nodes['kpi-total'] = {
+    textContent: ''
+};
+
+nodes['kpi-contratadas'] = {
+    textContent: ''
+};
+
+nodes['kpi-conversao'] = {
+    textContent: ''
+};
+
+nodes['kpi-solicitado'] = {
+    textContent: ''
+};
+
+nodes['kpi-perdido'] = {
+    textContent: ''
+};
+
+const rows = Array.from(
+    {length: 5},
+    () => ({
+        cells: [
+            {
+                textContent:
+                    'Indicador'
+            },
+            {
+                textContent: ''
+            },
+            {
+                textContent:
+                    'Anterior intacto'
+            },
+            {
+                textContent:
+                    'Acumulado intacto'
+            }
+        ]
+    })
+);
+
+const header = {
+    textContent:
+        'Semana selecionada'
+};
+
+nodes['resumo-semanal'] = {
+    tHead: {
+        rows: [
+            {
+                cells: [
+                    {},
+                    header
+                ]
+            }
+        ]
+    },
+
+    tBodies: [
+        {
+            rows
+        }
+    ]
+};
+
+vm.runInNewContext(
+    entrada.script,
+    {
+        document: {
+            getElementById(id) {
+                return nodes[id];
+            }
+        }
+    }
+);
+
+const valores = () =>
+    rows.map(
+        row =>
+            row.cells[1].textContent
+    );
+
+const cards = () => [
+    nodes[
+        'kpi-total'
+    ].textContent,
+
+    nodes[
+        'kpi-contratadas'
+    ].textContent,
+
+    nodes[
+        'kpi-conversao'
+    ].textContent,
+
+    nodes[
+        'kpi-solicitado'
+    ].textContent,
+
+    nodes[
+        'kpi-perdido'
+    ].textContent
+];
+
+const zero = [
+    '0',
+    '0',
+    'Não aplicável',
+    '0,00',
+    '0,00'
+];
+
+const original =
+    entrada.vazia
+        ? zero
+        : [
+            '2',
+            '1',
+            '50,00%',
+            '500,00',
+            '300,00'
+        ];
+
+const cardsEsperados = valores => [
+    valores[0],
+    valores[1],
+    valores[2],
+    'R$ ' + valores[3],
+    'R$ ' + valores[4]
+];
+
+assert.deepEqual(
+    valores(),
+    original
+);
+
+assert.deepEqual(
+    cards(),
+    cardsEsperados(original)
+);
+
+assert.equal(
+    nodes[
+        'controles-filtros'
+    ].disabled,
+    false
+);
+
+if (!entrada.vazia) {
+    nodes[
+        'filtro-canal'
+    ].value = '1';
+
+    nodes[
+        'filtro-canal'
+    ].change();
+
+    const canalA = [
+        '1',
+        '1',
+        '100,00%',
+        '200,00',
+        '0,00'
+    ];
+
+    assert.deepEqual(
+        valores(),
+        canalA
+    );
+
+    assert.deepEqual(
+        cards(),
+        cardsEsperados(canalA)
+    );
+
+    nodes[
+        'filtro-etapa'
+    ].value = '3';
+
+    nodes[
+        'filtro-etapa'
+    ].change();
+
+    assert.deepEqual(
+        valores(),
+        zero
+    );
+
+    assert.deepEqual(
+        cards(),
+        cardsEsperados(zero)
+    );
+
+    assert.match(
+        nodes[
+            'situacao-filtros'
+        ].textContent,
+        /Sem propostas/
+    );
+
+    assert.equal(
+        header.textContent,
+        'Semana selecionada — filtros aplicados'
+    );
+
+    nodes[
+        'filtro-canal'
+    ].value = '2';
+
+    nodes[
+        'filtro-canal'
+    ].change();
+
+    const canalB = [
+        '1',
+        '0',
+        '0,00%',
+        '300,00',
+        '300,00'
+    ];
+
+    assert.deepEqual(
+        valores(),
+        canalB
+    );
+
+    assert.deepEqual(
+        cards(),
+        cardsEsperados(canalB)
+    );
+}
+
+nodes[
+    'limpar-filtros'
+].click();
+
+assert.equal(
+    nodes[
+        'filtro-canal'
+    ].value,
+    '0'
+);
+
+assert.equal(
+    nodes[
+        'filtro-etapa'
+    ].value,
+    '0'
+);
+
+assert.equal(
+    header.textContent,
+    'Semana selecionada'
+);
+
+assert.deepEqual(
+    valores(),
+    original
+);
+
+assert.deepEqual(
+    cards(),
+    cardsEsperados(original)
+);
+
+rows.forEach(
+    row => {
+        assert.equal(
+            row.cells[2].textContent,
+            'Anterior intacto'
+        );
+
+        assert.equal(
+            row.cells[3].textContent,
+            'Acumulado intacto'
+        );
+    }
+);
+"""
+
+    resultado = subprocess.run(
+        [
+            node,
+            "-e",
+            runner,
+        ],
+        input=json.dumps(
+            {
+                "dados": m["filtros"],
+                "script": SCRIPT_FILTROS,
+                "vazia": vazia,
+            }
+        ),
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+    )
+
+    assert (
+        resultado.returncode == 0
+    ), resultado.stderr
 
 def test_falha_de_gravacao_atomica_preserva_relatorio(tmp_path, monkeypatch):
     destino = tmp_path / "relatorio.html"
