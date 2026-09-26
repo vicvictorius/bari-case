@@ -16,8 +16,8 @@ Os principais achados foram:
 
 - **Análise de crédito (etapa 3)** concentra **35,1% do valor solicitado não contratado**, aproximadamente **R$ 703 milhões**.
 - Considerando as perdas do funil por motivo, **60,8% do valor solicitado não contratado** está associado a desistência ou falta de retorno do cliente, e não diretamente à reprovação de crédito.
-- A conversão observada passou de **20,4% em 2024 para 18,7% nas coortes maduras de Jan–Out/2025**. A deterioração existe nos dados analisados, mas não foi submetida a teste de significância estatística e não deve ser interpretada isoladamente como evidência de uma queda estrutural permanente.
-- O canal **Correspondente** apresentou conversão de **14,3%**, contra aproximadamente **20–22%** nos demais canais, enquanto aumentou sua participação no volume.
+- A conversão observada passou de **20,4% em 2024 para 18,7% nas coortes maduras de Jan–Out/2025**, mas essa diferença **não é estatisticamente significativa** (teste z de duas proporções, p ≈ 0,10; IC 95% da diferença de −3,6 a +0,3 p.p.). É um sinal fraco a acompanhar, não uma queda comprovada.
+- O canal **Correspondente** apresentou conversão de **14,3%**, contra **21,3%** nos demais canais somados (p < 0,0001), enquanto aumentou sua participação no volume. Esse é o sinal mais robusto da análise.
 - **Score de crédito** apresentou a maior associação observada com contratação, com amplitude de **30,4 pontos percentuais** entre grupos analisados, seguido por LTV e canal de origem.
 
 Essas relações são **associações observadas nos dados**, não evidência de causalidade.
@@ -112,6 +112,8 @@ bari-case/
 │   ├── 03_diagnostico_funil.py
 │   ├── 03_diagnostico_output.txt
 │   ├── 04_respostas_parte1.md
+│   ├── 05_teste_significancia.py
+│   ├── 05_teste_significancia_output.txt
 │   ├── definicao_metricas.md
 │   ├── propostas_credito_tratado.csv
 │   └── registro_tratamento.md
@@ -531,6 +533,7 @@ python parte1_diagnostico/00_profiling.py > parte1_diagnostico/00_profiling_outp
 python parte1_diagnostico/01_tratamento.py
 python parte1_diagnostico/02_comparacao_metricas.py
 python parte1_diagnostico/03_diagnostico_funil.py > parte1_diagnostico/03_diagnostico_output.txt
+python parte1_diagnostico/05_teste_significancia.py > parte1_diagnostico/05_teste_significancia_output.txt
 ```
 
 | Script | Lê | Produz |
@@ -539,6 +542,7 @@ python parte1_diagnostico/03_diagnostico_funil.py > parte1_diagnostico/03_diagno
 | `01_tratamento.py` | CSV bruto | `propostas_credito_tratado.csv`, via `pipeline/tratamento.py` |
 | `02_comparacao_metricas.py` | CSV tratado | comparação das duas definições de valor perdido (`definicao_metricas.md`) |
 | `03_diagnostico_funil.py` | CSV tratado | números que sustentam `04_respostas_parte1.md` |
+| `05_teste_significancia.py` | CSV tratado | teste z das diferenças de conversão da Pergunta 2 |
 
 Os arquivos `*_output.txt` versionados são a saída exata desses comandos; rodar de novo deve reproduzi-los.
 
@@ -612,7 +616,7 @@ python -m pytest parte3_extracao_ia/testes -v
 Algumas limitações foram mantidas explicitamente na entrega:
 
 - as estimativas financeiras dependem de premissas e representam oportunidades, não previsões;
-- a queda observada de conversão não foi submetida a teste de significância estatística;
+- a queda observada de conversão não é estatisticamente significativa ao nível de 5% (p ≈ 0,10);
 - coortes recentes podem estar imaturas, exigindo cautela em comparações temporais;
 - associação entre características e contratação não implica causalidade;
 - o relatório semanal utiliza uma leitura retrospectiva por `data_entrada` e não reconstrói o status historicamente conhecido em cada semana;
