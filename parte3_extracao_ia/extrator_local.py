@@ -29,7 +29,7 @@ from pathlib import Path
 import ollama
 from pydantic import ValidationError
 
-from extrator import PROMPT_SISTEMA  # reaproveita o mesmo prompt do pipeline via API
+from extrator import PROMPT_SISTEMA
 from schema import CAMPOS_LAUDO, LaudoExtraido
 
 logger = logging.getLogger("extrator_laudos_local")
@@ -48,20 +48,30 @@ def montar_json_schema() -> dict:
         "type": "object",
         "properties": {
             "valor": {"type": ["string", "null"]},
-            "status": {"type": "string", "enum": ["presente", "ausente", "conflitante"]},
+            "status": {
+                "type": "string",
+                "enum": ["presente", "ausente", "conflitante"],
+            },
             "trecho_bruto": {"type": ["string", "null"]},
         },
         "required": ["status"],
     }
+
     return {
         "type": "object",
-        "properties": {campo: campo_schema for campo in CAMPOS_LAUDO},
+        "properties": {
+            campo: campo_schema
+            for campo in CAMPOS_LAUDO
+        },
         "required": CAMPOS_LAUDO,
     }
 
 
 def extrair_um_laudo(
-    client: ollama.Client, modelo: str, texto_laudo: str, nome_arquivo: str
+    client: ollama.Client,
+    modelo: str,
+    texto_laudo: str,
+    nome_arquivo: str,
 ) -> LaudoExtraido:
     """Extrai os campos de um laudo via modelo local, com retry em caso de saída inválida.
 
@@ -72,107 +82,267 @@ def extrair_um_laudo(
     isso só o Pydantic garante.
     """
     schema = montar_json_schema()
+
     mensagens: list[dict] = [
-        {"role": "system", "content": PROMPT_SISTEMA},
-        {"role": "user", "content": texto_laudo},
+        {
+            "role": "system",
+            "content": PROMPT_SISTEMA,
+        },
+        {
+            "role": "user",
+            "content": texto_laudo,
+        },
     ]
 
     ultimo_erro: Exception | None = None
+
     for tentativa in range(1, MAX_TENTATIVAS + 1):
         try:
-            resposta = client.chat(model=modelo, messages=mensagens, format=schema)
-        except Exception as exc:  # erro de conexão com o servidor Ollama local, modelo não encontrado, etc.
-            ultimo_erro = exc
-            logger.warning(
-                "%s: erro ao chamar o Ollama (tentativa %d/%d) -- %s",
-                nome_arquivo, tentativa, MAX_TENTATIVAS, exc,
+            resposta = client.chat(
+                model=modelo,
+                messages=mensagens,
+                format=schema,
             )
+
+        except Exception as exc:
+            # Erro de conexão com o servidor Ollama local,
+            # modelo não encontrado etc.
+            ultimo_erro = exc
+
+            logger.warning(
+                "%s: erro ao chamar o Ollama "
+                "(tentativa %d/%d) -- %s",
+                nome_arquivo,
+                tentativa,
+                MAX_TENTATIVAS,
+                exc,
+            )
+
             continue
 
         conteudo = resposta["message"]["content"]
+
         try:
             dados = json.loads(conteudo)
             dados["arquivo_origem"] = nome_arquivo
+
             return LaudoExtraido.model_validate(dados)
+
         except (json.JSONDecodeError, ValidationError) as exc:
             ultimo_erro = exc
-            detalhe = exc.errors() if isinstance(exc, ValidationError) else str(exc)
+
+            detalhe = (
+                exc.errors()
+                if isinstance(exc, ValidationError)
+                else str(exc)
+            )
+
             logger.warning(
                 "%s: saída inválida na tentativa %d/%d -- %s",
-                nome_arquivo, tentativa, MAX_TENTATIVAS, detalhe,
+                nome_arquivo,
+                tentativa,
+                MAX_TENTATIVAS,
+                detalhe,
             )
+
             mensagens = mensagens + [
-                {"role": "assistant", "content": conteudo},
+                {
+                    "role": "assistant",
+                    "content": conteudo,
+                },
                 {
                     "role": "user",
-                    "content": f"A saída não é um JSON válido para o schema pedido: {detalhe}. "
-                    "Gere novamente, só o JSON, sem texto antes ou depois.",
+                    "content": (
+                        "A saída não é um JSON válido para o "
+                        f"schema pedido: {detalhe}. "
+                        "Gere novamente, só o JSON, "
+                        "sem texto antes ou depois."
+                    ),
                 },
             ]
 
     raise RuntimeError(
-        f"Falha ao extrair {nome_arquivo} após {MAX_TENTATIVAS} tentativas: {ultimo_erro}"
+        f"Falha ao extrair {nome_arquivo} após "
+        f"{MAX_TENTATIVAS} tentativas: {ultimo_erro}"
     )
 
 
-def processar_diretorio(entrada: Path, client: ollama.Client, modelo: str) -> list[dict]:
-    """Processa todos os .txt de um diretório, isolando falhas por arquivo."""
+def processar_diretorio(
+    entrada: Path,
+    client: ollama.Client,
+    modelo: str,
+) -> tuple[list[dict], int]:
+    """Processa todos os .txt de um diretório, isolando falhas por arquivo.
+
+    Retorna os resultados válidos e a quantidade de arquivos que falharam.
+    Isso permite preservar resultados parciais para auditoria sem sinalizar
+    uma execução incompleta como sucesso.
+    """
     arquivos = sorted(entrada.glob("*.txt"))
+
     if not arquivos:
-        logger.error("Nenhum .txt encontrado em %s", entrada)
-        return []
+        logger.error(
+            "Nenhum .txt encontrado em %s",
+            entrada,
+        )
+        return [], 0
 
     resultados: list[dict] = []
     falhas = 0
+
     for caminho in arquivos:
-        texto = caminho.read_text(encoding="utf-8")
+        texto = caminho.read_text(
+            encoding="utf-8",
+        )
+
         try:
-            registro = extrair_um_laudo(client, modelo, texto, caminho.name)
-            resultados.append(registro.model_dump(mode="json"))
-            logger.info("OK: %s", caminho.name)
+            registro = extrair_um_laudo(
+                client,
+                modelo,
+                texto,
+                caminho.name,
+            )
+
+            resultados.append(
+                registro.model_dump(
+                    mode="json",
+                )
+            )
+
+            logger.info(
+                "OK: %s",
+                caminho.name,
+            )
+
         except RuntimeError as exc:
             falhas += 1
-            logger.error("FALHOU: %s -- %s", caminho.name, exc)
+
+            logger.error(
+                "FALHOU: %s -- %s",
+                caminho.name,
+                exc,
+            )
 
     logger.info(
         "Processamento concluído: %d ok, %d falhas, %d total",
-        len(resultados), falhas, len(arquivos),
+        len(resultados),
+        falhas,
+        len(arquivos),
     )
-    return resultados
+
+    return resultados, falhas
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--entrada", type=Path, required=True, help="Diretório com os .txt dos laudos")
-    parser.add_argument("--saida", type=Path, required=True, help="Caminho do JSON consolidado de saída")
-    parser.add_argument("--modelo", default=MODELO_PADRAO, help="Nome do modelo no Ollama (ex: qwen2.5:7b-instruct)")
-    parser.add_argument("--host", default="http://localhost:11434", help="Endereço do servidor Ollama local")
-    parser.add_argument("--log-level", default="INFO")
+    parser = argparse.ArgumentParser(
+        description=__doc__,
+    )
+
+    parser.add_argument(
+        "--entrada",
+        type=Path,
+        required=True,
+        help="Diretório com os .txt dos laudos",
+    )
+
+    parser.add_argument(
+        "--saida",
+        type=Path,
+        required=True,
+        help="Caminho do JSON consolidado de saída",
+    )
+
+    parser.add_argument(
+        "--modelo",
+        default=MODELO_PADRAO,
+        help=(
+            "Nome do modelo no Ollama "
+            "(ex: qwen2.5:7b-instruct)"
+        ),
+    )
+
+    parser.add_argument(
+        "--host",
+        default="http://localhost:11434",
+        help="Endereço do servidor Ollama local",
+    )
+
+    parser.add_argument(
+        "--log-level",
+        default="INFO",
+    )
+
     args = parser.parse_args()
 
     logging.basicConfig(
         level=args.log_level,
-        format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+        format=(
+            "%(asctime)s %(levelname)s "
+            "%(name)s: %(message)s"
+        ),
     )
 
-    client = ollama.Client(host=args.host)
+    client = ollama.Client(
+        host=args.host,
+    )
+
     try:
-        client.list()  # checagem rápida: o servidor está de pé?
+        # Checagem rápida: o servidor está de pé?
+        client.list()
+
     except Exception as exc:
         logger.error(
-            "Não consegui conectar ao Ollama em %s -- ele está rodando? (%s)", args.host, exc
+            "Não consegui conectar ao Ollama em %s -- "
+            "ele está rodando? (%s)",
+            args.host,
+            exc,
         )
         return 1
 
     if not args.entrada.is_dir():
-        logger.error("Diretório de entrada não existe: %s", args.entrada)
+        logger.error(
+            "Diretório de entrada não existe: %s",
+            args.entrada,
+        )
         return 1
 
-    resultados = processar_diretorio(args.entrada, client, args.modelo)
-    args.saida.parent.mkdir(parents=True, exist_ok=True)
-    args.saida.write_text(json.dumps(resultados, ensure_ascii=False, indent=2), encoding="utf-8")
-    logger.info("Saída gravada em %s", args.saida)
-    return 0 if resultados else 1
+    resultados, falhas = processar_diretorio(
+        args.entrada,
+        client,
+        args.modelo,
+    )
+
+    args.saida.parent.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+
+    args.saida.write_text(
+        json.dumps(
+            resultados,
+            ensure_ascii=False,
+            indent=2,
+        ),
+        encoding="utf-8",
+    )
+
+    logger.info(
+        "Saída gravada em %s",
+        args.saida,
+    )
+
+    if falhas > 0:
+        logger.error(
+            "Execução incompleta: %d arquivo(s) falharam. "
+            "A saída parcial foi preservada para auditoria.",
+            falhas,
+        )
+        return 1
+
+    if not resultados:
+        return 1
+
+    return 0
 
 
 if __name__ == "__main__":
