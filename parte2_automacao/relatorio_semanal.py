@@ -25,6 +25,13 @@ COLUNAS = (
     "consultor_id", "etapa_max_funil", "status_final", "tempo_analise_dias",
     "data_assinatura_contrato", "taxa_juros_aa",
 )
+# Sem estas, o relatório não pode ser calculado (métricas ou regras do pipeline).
+ESSENCIAIS = (
+    "id_proposta", "data_entrada", "canal_origem", "valor_imovel", "valor_solicitado",
+    "etapa_max_funil", "status_final", "data_assinatura_contrato", "taxa_juros_aa",
+)
+# Não entram nas métricas do relatório: se faltarem, a execução segue com aviso.
+OPCIONAIS = tuple(c for c in COLUNAS if c not in ESSENCIAIS)
 NUMERICAS = (
     "valor_imovel", "valor_solicitado", "prazo_meses", "score_credito",
     "idade_cliente", "renda_mensal_declarada", "flag_cliente_recorrente",
@@ -37,6 +44,9 @@ STATUS = {
 ETAPAS = {1: "Simulação", 2: "Lead", 3: "Análise de crédito",
           4: "Avaliação do imóvel", 5: "Formalização", 6: "Contratação"}
 LOG = logging.getLogger("bari.semanal")
+LOG_PIPELINE = logging.getLogger("bari.pipeline")
+AVISO_BASE_DESATUALIZADA = "Possível base desatualizada"
+CODIGO_BASE_DESATUALIZADA = 3
 
 
 class ErroEntrada(ValueError):
@@ -54,9 +64,10 @@ def ler_e_tratar(caminho: Path) -> pd.DataFrame:
             cabecalho = next(leitor, [])
             if len(set(cabecalho)) != len(cabecalho):
                 raise ErroEntrada("Cabeçalho contém colunas duplicadas.")
-            faltantes = sorted(set(COLUNAS) - set(cabecalho))
+            faltantes = sorted(set(ESSENCIAIS) - set(cabecalho))
             if faltantes:
                 raise ErroEntrada("Colunas obrigatórias ausentes: " + ", ".join(faltantes))
+            opcionais_ausentes = [c for c in OPCIONAIS if c not in cabecalho]
             for numero, linha in enumerate(leitor, 2):
                 if len(linha) != len(cabecalho):
                     raise ErroEntrada(f"Registro {numero}: quantidade de campos diferente do cabeçalho.")
@@ -70,10 +81,15 @@ def ler_e_tratar(caminho: Path) -> pd.DataFrame:
     LOG.info("Leitura: %d registros, %d colunas, separador %r", len(bruto), len(bruto.columns), separador)
     if extras:
         LOG.warning("Colunas adicionais preservadas, sem uso nas métricas: %s", ", ".join(extras))
+    if opcionais_ausentes:
+        LOG.warning("Colunas ausentes sem uso nas métricas do relatório, preenchidas como nulas: %s",
+                    ", ".join(opcionais_ausentes))
+        for coluna in opcionais_ausentes:
+            bruto[coluna] = pd.Series(pd.NA, index=bruto.index, dtype="object")
 
     # Os únicos nulos estruturais admitidos na entrada são os já documentados.
     for coluna in COLUNAS:
-        if coluna not in {"data_assinatura_contrato", "taxa_juros_aa"}:
+        if coluna not in {"data_assinatura_contrato", "taxa_juros_aa", *opcionais_ausentes}:
             if bruto[coluna].fillna("").str.strip().eq("").any():
                 raise ErroEntrada(f"Coluna {coluna}: valor obrigatório ausente.")
     if bruto["id_proposta"].duplicated().any():
@@ -102,7 +118,7 @@ def ler_e_tratar(caminho: Path) -> pd.DataFrame:
             raise ErroEntrada(f"Coluna {coluna}: data inválida ou formato não suportado.")
     try:
         tratado = tratar_dados(bruto)
-    except (ValueError, TypeError, AssertionError) as exc:
+    except (ValueError, TypeError) as exc:
         raise ErroEntrada(f"Tratamento incompatível com a entrada: {exc}") from exc
     if not tratado["etapa_max_funil"].isin(ETAPAS).all():
         raise ErroEntrada("etapa_max_funil deve ser um inteiro entre 1 e 6 após o tratamento.")
@@ -147,7 +163,7 @@ def calcular(df: pd.DataFrame, referencia: date) -> dict:
     if semana.empty:
         avisos.append("Sem propostas com entrada na semana. Conversão não aplicável; ausência de registros não comprova ausência de atividade.")
     if datas.max() < pd.Timestamp(inicio):
-        avisos.append("Possível base desatualizada: a última entrada é anterior à semana selecionada. Confirme a atualização do arquivo.")
+        avisos.append(AVISO_BASE_DESATUALIZADA + ": a última entrada é anterior à semana selecionada. Confirme a atualização do arquivo.")
     if datas.min() > pd.Timestamp(inicio):
         avisos.append("A primeira entrada da base é posterior ao início da semana; a cobertura do período pode ser parcial.")
     return {
@@ -1404,18 +1420,25 @@ def main(argv: list[str] | None = None) -> int:
     inicio, fim = periodo(args.data_referencia)
     nome = f"relatorio_{inicio.isoformat()}_{(fim - timedelta(days=1)).isoformat()}"
     handlers = []
-    LOG.setLevel(logging.INFO)
-    LOG.propagate = False
+    # O pipeline compartilhado registra suas correções em "bari.pipeline";
+    # elas vão para o mesmo console e arquivo de log desta execução.
+    loggers = (LOG, LOG_PIPELINE)
+    estado_original = [(logger, logger.level, logger.propagate) for logger in loggers]
+    for logger in loggers:
+        logger.setLevel(logging.INFO)
+        logger.propagate = False
     try:
         console = logging.StreamHandler()
         console.setFormatter(logging.Formatter("%(levelname)s: %(message)s"))
-        LOG.addHandler(console)
         handlers.append(console)
+        for logger in loggers:
+            logger.addHandler(console)
         saida.mkdir(parents=True, exist_ok=True)
         arquivo_log = logging.FileHandler(saida / f"{nome}.log", encoding="utf-8")
         arquivo_log.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(message)s"))
-        LOG.addHandler(arquivo_log)
         handlers.append(arquivo_log)
+        for logger in loggers:
+            logger.addHandler(arquivo_log)
         LOG.info("INÍCIO referência=%s entrada=%s", args.data_referencia, entrada)
         dados = ler_e_tratar(entrada)
         metricas = calcular(dados, args.data_referencia)
@@ -1424,6 +1447,12 @@ def main(argv: list[str] | None = None) -> int:
         destino = saida / f"{nome}.html"
         gravar_html(destino, gerar_html(metricas, entrada.name))
         LOG.info("SUCESSO relatório=%s propostas_semana=%d", destino, metricas["semana"]["total"])
+        if any(aviso.startswith(AVISO_BASE_DESATUALIZADA) for aviso in metricas["avisos"]):
+            # HTML gerado, mas o agendador precisa enxergar que algo está errado:
+            # um código 0 aqui faria um relatório vazio parecer uma execução normal.
+            LOG.warning("Código de saída %d: relatório gerado sobre base possivelmente desatualizada.",
+                        CODIGO_BASE_DESATUALIZADA)
+            return CODIGO_BASE_DESATUALIZADA
         return 0
     except (OSError, ValueError, pd.errors.EmptyDataError) as exc:
         LOG.error("FALHA: %s. Nenhum relatório novo foi publicado; eventual HTML anterior permanece inalterado.", exc)
@@ -1433,8 +1462,12 @@ def main(argv: list[str] | None = None) -> int:
         return 1
     finally:
         for handler in handlers:
-            LOG.removeHandler(handler)
+            for logger in loggers:
+                logger.removeHandler(handler)
             handler.close()
+        for logger, nivel, propaga in estado_original:
+            logger.setLevel(nivel)
+            logger.propagate = propaga
 
 
 if __name__ == "__main__":
