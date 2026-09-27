@@ -720,22 +720,26 @@ DIARIO.md
 # Tempo de desenvolvimento
 
 O tempo não foi cronometrado durante o desenvolvimento. A estimativa abaixo foi
-**reconstruída a partir dos horários dos commits**: duas sessões (25/09 à noite até a
-madrugada de 26/09, e 26/09 da tarde à noite), somando cerca de 17h de relógio. Desse total,
-cerca de 3h a 4h foram execuções dos modelos locais sobre os 17 laudos, principalmente em
-CPU, sem acompanhamento ativo.
+**reconstruída a partir dos horários dos commits**: duas sessões contínuas, somando
+cerca de **17h**:
 
-| Etapa | Tempo ativo aproximado |
+- 25/09, ~19h, até 26/09, ~05h (~10h);
+- 26/09, ~15h30, até ~22h15 (~6h45).
+
+Os intervalos sem commits dentro das sessões (o maior deles das 00h54 às 04h24) foram usados
+para estudo e desenvolvimento, em paralelo às execuções dos modelos locais sobre os 17 laudos,
+que rodavam principalmente em CPU.
+
+| Etapa | Tempo aproximado |
 |---|---:|
 | Parte 1 — Profiling, tratamento, diagnóstico e refinamentos | 4h–4h30 |
 | Parte 2 — Automação e interface do relatório | 2h30–3h |
-| Parte 3 — Extração, avaliação e iterações de schema/prompt | 5h–5h30 |
+| Parte 3 — Extração, avaliação, estudo e iterações de schema/prompt | 7h–8h |
 | Parte 4 — Diário, resumo executivo e documentação | 2h |
 | Revisão final contra o enunciado | 1h |
-| **Total ativo** | **~14h30–16h** |
-| Execução dos modelos locais, sem acompanhamento | +3h–4h |
+| **Total** | **~17h** |
 
-O tempo inclui análise dos dados, implementação, testes, investigação de erros,
+O tempo inclui estudo, análise dos dados, implementação, testes, investigação de erros,
 experimentação com modelos locais e documentação das decisões.
 
 ---
