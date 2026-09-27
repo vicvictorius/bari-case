@@ -217,7 +217,7 @@ log da execução
 
 A automação possui tratamento explícito para situações como:
 
-- colunas ausentes;
+- colunas ausentes (essenciais interrompem; opcionais geram aviso e a execução segue);
 - formatos inválidos;
 - IDs duplicados;
 - registros incompletos;
@@ -486,10 +486,10 @@ O projeto possui testes automatizados para as Partes 2 e 3.
 Na execução final:
 
 ```text
-Parte 2: 37 testes aprovados
+Parte 2: 54 testes aprovados
 Parte 3: 112 testes aprovados
 
-Total: 149 testes aprovados
+Total: 166 testes aprovados
 ```
 
 A suíte completa foi executada com:
@@ -501,13 +501,14 @@ python -m pytest -q
 e terminou com:
 
 ```text
-149 passed
+166 passed
 ```
 
 Os testes cobrem, entre outros pontos:
 
 - validação do CSV;
 - mudanças e erros de schema;
+- regras genéricas do pipeline: origem já corrigida, mesmo erro em outra linha e colunas opcionais ausentes;
 - duplicidades;
 - registros incompletos;
 - geração segura do HTML;
