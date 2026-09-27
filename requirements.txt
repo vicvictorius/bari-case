@@ -1,6 +1,7 @@
 # Parte 1 e pipeline compartilhado
 pandas
 numpy
+scipy
 
 # Parte 3: manter as dependências e versões em sua fonte atual
 -r parte3_extracao_ia/requirements.txt
