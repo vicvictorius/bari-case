@@ -436,6 +436,12 @@ do JSON de falhas trunca o `input_value` e, sozinha, não distingue `None`
 de texto vazio após a limpeza. O motivo de o modelo devolver `None` não
 foi determinado.
 
+Um laudo que falha não some da saída: a partir desta versão, ele aparece no
+mesmo JSON com `"extracao": "falhou"` e todos os campos com `status: "nao_extraido"`
+e valor nulo, para revisão humana. Os artefatos versionados acima são anteriores
+a essa mudança e foram preservados; o avaliador trata os dois formatos da mesma
+forma e as métricas não mudam.
+
 Na execução com schema antigo, os erros incluíam números com texto em volta,
 trocas entre área privativa e área total e divergências em campos textuais.
 Esses resultados motivaram a tipagem dos campos e o refinamento do prompt.
@@ -487,9 +493,9 @@ Na execução final:
 
 ```text
 Parte 2: 54 testes aprovados
-Parte 3: 112 testes aprovados
+Parte 3: 115 testes aprovados
 
-Total: 166 testes aprovados
+Total: 169 testes aprovados
 ```
 
 A suíte completa foi executada com:
@@ -501,7 +507,7 @@ python -m pytest -q
 e terminou com:
 
 ```text
-166 passed
+169 passed
 ```
 
 Os testes cobrem, entre outros pontos:

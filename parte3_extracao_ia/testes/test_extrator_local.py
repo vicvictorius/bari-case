@@ -334,8 +334,10 @@ def test_main_grava_falhas_e_preserva_saida_parcial(
 
     assert retorno == (1 if quantidade_falhas else 0)
     resultados = json.loads(saida.read_text(encoding="utf-8"))
-    assert [r["arquivo_origem"] for r in resultados] == [
-        f"laudo_{numero}.txt" for numero in (1, 2) if numero > quantidade_falhas
+    # Todos os laudos aparecem na saída; os que falharam ficam marcados.
+    assert [r["arquivo_origem"] for r in resultados] == ["laudo_1.txt", "laudo_2.txt"]
+    assert [r["extracao"] for r in resultados] == [
+        "falhou" if numero <= quantidade_falhas else "ok" for numero in (1, 2)
     ]
     falhas = json.loads(arquivo_falhas.read_text(encoding="utf-8"))
     assert falhas == [
@@ -353,3 +355,21 @@ def test_main_grava_falhas_e_preserva_saida_parcial(
         f"Processamento concluído: {2 - quantidade_falhas} ok, "
         f"{quantidade_falhas} falhas, 2 total"
     ) in caplog.text
+
+
+def test_registro_de_falha_tem_todos_os_campos_sem_valor_inventado():
+    registro = extrator_local.registro_de_falha("laudo_9.txt", "erro X")
+    assert registro["extracao"] == "falhou"
+    assert registro["motivo_falha"] == "erro X"
+    for campo in extrator_local.CAMPOS_LAUDO:
+        assert registro[campo] == {
+            "valor": None, "status": extrator_local.STATUS_NAO_EXTRAIDO, "trecho_bruto": None,
+        }
+
+
+def test_consolidar_saida_mantem_ordem_dos_arquivos_e_marca_status():
+    ok = {**REGISTRO_VALIDO, "arquivo_origem": "laudo_2.txt"}
+    falha = {"arquivo_origem": "laudo_1.txt", "ultimo_erro": "erro"}
+    saida = extrator_local.consolidar_saida(["laudo_1.txt", "laudo_2.txt"], [ok], [falha])
+    assert [r["arquivo_origem"] for r in saida] == ["laudo_1.txt", "laudo_2.txt"]
+    assert [r["extracao"] for r in saida] == ["falhou", "ok"]

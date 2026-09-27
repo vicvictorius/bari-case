@@ -154,6 +154,42 @@ def extrair_um_laudo(
     )
 
 
+STATUS_NAO_EXTRAIDO = "nao_extraido"
+
+
+def registro_de_falha(arquivo_origem: str, motivo: str) -> dict:
+    """Registro no mesmo formato da saída para um laudo que não pôde ser extraído.
+
+    Todos os campos existem, com valor nulo e status "nao_extraido". Esse status
+    não pertence ao schema enviado ao modelo: ele é do pipeline, e significa
+    "não sabemos, precisa de revisão humana". Assim o laudo não some da saída
+    e nenhum valor é inventado para preencher o buraco.
+    """
+    registro: dict = {
+        "arquivo_origem": arquivo_origem,
+        "extracao": "falhou",
+        "motivo_falha": motivo,
+    }
+    for campo in CAMPOS_LAUDO:
+        registro[campo] = {"valor": None, "status": STATUS_NAO_EXTRAIDO, "trecho_bruto": None}
+    return registro
+
+
+def consolidar_saida(arquivos: list[str], resultados: list[dict], falhas: list[dict]) -> list[dict]:
+    """Uma entrada por laudo processado, na ordem dos arquivos.
+
+    Extrações válidas recebem extracao="ok"; falhas viram registro_de_falha.
+    Quem consome a saída filtra por `extracao` em vez de descobrir sozinho
+    que faltou um laudo.
+    """
+    por_arquivo = {r["arquivo_origem"]: {**r, "extracao": "ok"} for r in resultados}
+    for falha in falhas:
+        por_arquivo[falha["arquivo_origem"]] = registro_de_falha(
+            falha["arquivo_origem"], falha["ultimo_erro"]
+        )
+    return [por_arquivo[nome] for nome in arquivos if nome in por_arquivo]
+
+
 def processar_diretorio(
     entrada: Path,
     client: ollama.Client,
@@ -308,9 +344,11 @@ def main() -> int:
         exist_ok=True,
     )
 
+    arquivos = sorted(caminho.name for caminho in args.entrada.glob("*.txt"))
+
     args.saida.write_text(
         json.dumps(
-            resultados,
+            consolidar_saida(arquivos, resultados, falhas),
             ensure_ascii=False,
             indent=2,
         ),
@@ -340,8 +378,9 @@ def main() -> int:
 
     if falhas:
         logger.error(
-            "Execução incompleta: %d arquivo(s) falharam. "
-            "A saída parcial foi preservada para auditoria.",
+            "Execução incompleta: %d arquivo(s) falharam. Eles constam na "
+            "saída com extracao=\"falhou\" e status \"nao_extraido\" "
+            "em todos os campos, para revisão humana.",
             len(falhas),
         )
         return 1

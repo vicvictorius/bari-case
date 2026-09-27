@@ -297,6 +297,11 @@ def avaliar(
 
     for arquivo, registro_gabarito in gabarito.items():
         registro_extraido = extracao.get(arquivo)
+        if registro_extraido is not None and registro_extraido.get("extracao") == "falhou":
+            # Laudo presente na saída só como registro de falha: para a métrica,
+            # equivale a não extraído (mesmo tratamento da versão anterior,
+            # em que o laudo simplesmente não aparecia no JSON).
+            registro_extraido = None
 
         if registro_extraido is None:
             arquivos_faltando_na_extracao.append(arquivo)
@@ -534,7 +539,9 @@ def avaliar(
         "arquivos_faltando_na_extracao":
             arquivos_faltando_na_extracao,
         "total_laudos_gabarito": len(gabarito),
-        "total_laudos_extraidos": len(extracao),
+        "total_laudos_extraidos": sum(
+            1 for r in extracao.values() if r.get("extracao") != "falhou"
+        ),
     }
 
 
