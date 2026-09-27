@@ -17,7 +17,7 @@ Os principais achados foram:
 - **Análise de crédito (etapa 3)** concentra **35,1% do valor solicitado não contratado**, aproximadamente **R$ 703 milhões**.
 - Considerando as perdas do funil por motivo, **60,8% do valor solicitado não contratado** está associado a desistência ou falta de retorno do cliente, e não diretamente à reprovação de crédito.
 - A conversão observada passou de **20,4% em 2024 para 18,7% nas coortes maduras de Jan–Out/2025**, mas essa diferença **não é estatisticamente significativa** (teste z de duas proporções, p ≈ 0,10; IC 95% da diferença de −3,6 a +0,3 p.p.). É um sinal fraco a acompanhar, não uma queda comprovada.
-- O canal **Correspondente** apresentou conversão de **14,3%**, contra **21,3%** nos demais canais somados (p < 0,0001), enquanto aumentou sua participação no volume. Esse é o sinal mais robusto da análise.
+- O canal **Correspondente** apresentou conversão de **14,3%**, contra **21,3%** nos demais canais somados (p < 0,0001), enquanto aumentou sua participação no volume. A diferença aparece em todas as faixas de score: o perfil de score dos clientes explica só ~1,2 dos 7,1 p.p. Esse é o sinal mais robusto da análise.
 - **Score de crédito** apresentou a maior associação observada com contratação, com amplitude de **30,4 pontos percentuais** entre grupos analisados, seguido por LTV e canal de origem.
 
 Essas relações são **associações observadas nos dados**, não evidência de causalidade.
@@ -114,6 +114,8 @@ bari-case/
 │   ├── 04_respostas_parte1.md
 │   ├── 05_teste_significancia.py
 │   ├── 05_teste_significancia_output.txt
+│   ├── 06_robustez_associacoes.py
+│   ├── 06_robustez_associacoes_output.txt
 │   ├── definicao_metricas.md
 │   ├── propostas_credito_tratado.csv
 │   └── registro_tratamento.md
@@ -573,6 +575,7 @@ python parte1_diagnostico/01_tratamento.py
 python parte1_diagnostico/02_comparacao_metricas.py
 python parte1_diagnostico/03_diagnostico_funil.py > parte1_diagnostico/03_diagnostico_output.txt
 python parte1_diagnostico/05_teste_significancia.py > parte1_diagnostico/05_teste_significancia_output.txt
+python parte1_diagnostico/06_robustez_associacoes.py > parte1_diagnostico/06_robustez_associacoes_output.txt
 ```
 
 | Script | Lê | Produz |
@@ -582,6 +585,7 @@ python parte1_diagnostico/05_teste_significancia.py > parte1_diagnostico/05_test
 | `02_comparacao_metricas.py` | CSV tratado | comparação das duas definições de valor perdido (`definicao_metricas.md`) |
 | `03_diagnostico_funil.py` | CSV tratado | números que sustentam `04_respostas_parte1.md` |
 | `05_teste_significancia.py` | CSV tratado | teste z das diferenças de conversão da Pergunta 2 |
+| `06_robustez_associacoes.py` | CSV tratado | Correspondente x demais canais por faixa de score (Pergunta 2) e qui-quadrado de canal, UF e tipo de imóvel (Pergunta 3) |
 
 Os arquivos `*_output.txt` versionados são a saída exata desses comandos; rodar de novo deve reproduzi-los.
 

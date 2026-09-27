@@ -171,13 +171,18 @@ Q2             1600          337       21.1
 Q3             1600          291       18.2
 Q4 (maior)     1600          280       17.5
 
---- Por região (top 5 UF por volume) ---
+--- Por região (todas as UFs) ---
     total  contratadas  conversao
 uf                               
 GO    522          122       23.4
+DF    521          111       21.3
+MG    503          103       20.5
 SP   1648          328       19.9
+BA    521          100       19.2
 PE    564          102       18.1
+SC    507           90       17.8
 RS    540           96       17.8
+PR    516           91       17.6
 RJ    558           98       17.6
 
 --- Por faixa de prazo_meses ---

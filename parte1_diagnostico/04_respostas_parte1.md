@@ -74,10 +74,29 @@ Os dados confirmam uma **conversão observada inferior nos Correspondentes**:
 Com maior participação de um canal que apresenta menor conversão observada, aumenta também
 sua influência sobre a conversão agregada.
 
-Os dados, porém, **não permitem atribuir essa diferença diretamente à qualidade do canal**.
-Correspondentes podem receber propostas com distribuições diferentes de score, LTV, ticket
-ou outras características. Portanto, a diferença observada deve ser investigada antes de
-ser interpretada como falha operacional do canal.
+Uma explicação alternativa seria o **mix de propostas**: o Correspondente recebe propostas
+com score médio menor (655, contra 675 nos demais canais), e score é a variável mais
+associada à contratação (Pergunta 3). Para testar isso, comparei os canais **dentro de cada
+faixa de score** (`06_robustez_associacoes.py`, saída em `06_robustez_associacoes_output.txt`):
+
+| Faixa de score | Correspondente | Demais canais | Diferença |
+|---|---:|---:|---:|
+| ≤500 | 0,0% (n=31) | 2,0% (n=50) | −2,0 p.p. |
+| 501–600 | 8,7% | 11,5% | −2,8 p.p. |
+| 601–650 | 13,9% | 16,5% | −2,6 p.p. |
+| 651–700 | 12,9% | 21,0% | −8,1 p.p. |
+| 701–750 | 20,8% | 25,3% | −4,5 p.p. |
+| >750 | 21,7% | 34,0% | −12,3 p.p. |
+
+O Correspondente converte menos **em todas as faixas**. Reponderando sua conversão pelo mix
+de score dos demais canais, ela iria de 14,3% para 15,4%: o mix de score explica cerca de
+**1,2 dos 7,1 p.p.** de diferença, e **5,9 p.p. permanecem**. A diferença também é maior
+justamente nas faixas de score alto, onde o cliente é bom e a proposta deveria converter.
+
+Isso reforça que o problema não é só "o canal traz clientes piores". Ainda assim, a
+estratificação controla **uma variável por vez**; LTV, ticket e região não foram controlados
+simultaneamente, e a base não diz *por que* as propostas do canal se perdem. A diferença deve
+ser investigada com a operação antes de ser tratada como falha do canal.
 
 **Confiança nessa resposta: baixa para a queda, alta para o canal.**
 
@@ -114,10 +133,17 @@ Para comparar características com escalas diferentes, usei como medida descriti
 | **Score de crédito** | >750: **31,6%** | ≤500: 1,2% | **30,4 p.p.** |
 | **LTV** | 40–50%: 23,0% | >60%: **12,6%** | **10,4 p.p.** |
 | **Canal de origem** | Parceria: 22,3% | Correspondente: 14,3% | **8,0 p.p.** |
+| **Região (UF)** | GO: 23,4% | RJ/PR: 17,6% | **5,8 p.p.**¹ |
 | **Cliente recorrente** | Sim: 23,5% | Não: 18,4% | **5,1 p.p.** |
 | **Ticket** | Q1: 20,8% | Q4: 17,5% | **3,3 p.p.** |
 | **Tipo de imóvel** | Terreno: 21,1% | Casa: 18,2% | **2,9 p.p.** |
 | **Prazo** | 181–240 meses: 20,7% | 121–180 meses: 18,8% | **1,9 p.p.** |
+
+¹ A amplitude de região deve ser lida com cautela: são 10 UFs com ~500 propostas cada
+(SP tem 1.648), e quanto mais grupos, maior a amplitude esperada só por acaso. Um teste
+qui-quadrado de independência entre UF e contratação não rejeita a hipótese de ausência de
+associação (p ≈ 0,23). Para comparação, o mesmo teste para canal de origem dá p < 0,0001.
+Leitura: não há evidência de que região, isoladamente, explique a contratação nesta base.
 
 Pela métrica utilizada, **score de crédito apresenta a maior associação descritiva com
 contratação** entre as características analisadas.
