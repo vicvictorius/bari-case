@@ -8,7 +8,7 @@ Conversão geral no período: **19,39%** das propostas viram contrato.
 
 **1. A Análise de Crédito (etapa 3) concentra a maior perda de valor.** São **R$ 703 milhões** em crédito solicitado que não virou contrato, **35,1%** de toda a perda do funil. Nessa etapa, **1.191 propostas (R$ 471,7 mi)** saíram por desistência ou falta de retorno, não por reprovação.
 
-**2. O canal Correspondente é o problema confirmado; a queda de conversão ainda não.** O Correspondente converte **14,3%**, contra **21,3%** dos demais canais somados, diferença que se mantém ao longo do tempo e não é explicada pelo acaso. Ele também cresce em volume. Já a conversão geral passou de **20,4% (2024)** para **18,7% (jan–out/2025)**, mas essa variação **não é estatisticamente significativa**: é um sinal a acompanhar, não uma queda comprovada.
+**2. O canal Correspondente é o problema confirmado; a queda de conversão ainda não.** O Correspondente converte **14,3%**, contra **21,3%** dos demais canais somados, diferença que se mantém ao longo do tempo e não é explicada pelo acaso nem pelo score dos clientes: o canal converte menos **em todas as faixas de score**. Ele também cresce em volume. Já a conversão geral passou de **20,4% (2024)** para **18,7% (jan–out/2025)**, mas essa variação **não é estatisticamente significativa**: é um sinal a acompanhar, não uma queda comprovada.
 
 **3. Score é o que mais separa quem contrata de quem não contrata.** A diferença de conversão entre faixas de score chega a **30,4 pontos percentuais**, seguida de LTV e canal. É associação, não causa.
 
