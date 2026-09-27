@@ -132,9 +132,8 @@ conv_ticket = df.groupby("faixa_ticket", observed=True).agg(
 conv_ticket["conversao"] = (conv_ticket["contratadas"] / conv_ticket["total"] * 100).round(1)
 print(conv_ticket)
 
-print("\n--- Por região (top 5 UF por volume) ---")
-top_uf = df["uf"].value_counts().head(5).index
-conv_uf = df[df["uf"].isin(top_uf)].groupby("uf").agg(
+print("\n--- Por região (todas as UFs) ---")
+conv_uf = df.groupby("uf").agg(
     total=("id_proposta", "count"), contratadas=("contratada_flag", "sum")
 )
 conv_uf["conversao"] = (conv_uf["contratadas"] / conv_uf["total"] * 100).round(1)

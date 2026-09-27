@@ -105,8 +105,18 @@ para reprocessar uma semana antiga, informe `--data-referencia` manualmente.
 ## Contrato de entrada e falhas
 
 Aceita CSV UTF-8 (com ou sem BOM), separado por vírgula ou ponto e vírgula, com
-cabeçalhos exatos iguais aos 19 campos originais. Colunas adicionais são
-preservadas e registradas no log, mas não participam das métricas.
+cabeçalhos iguais aos 19 campos originais. As colunas se dividem em dois grupos:
+
+- **Essenciais** (`id_proposta`, `data_entrada`, `canal_origem`, `valor_imovel`,
+  `valor_solicitado`, `etapa_max_funil`, `status_final`, `data_assinatura_contrato`,
+  `taxa_juros_aa`): alimentam as métricas ou as regras do pipeline. Se faltar
+  alguma, a execução falha.
+- **Opcionais** (as demais 10): não entram no relatório. Se faltarem, a execução
+  segue, a coluna é preenchida como nula e o log registra um WARNING. Um relatório
+  que deixa de sair por causa de `consultor_id` seria pior para a liderança do que
+  um relatório com aviso.
+
+Colunas adicionais são preservadas e registradas no log, mas não participam das métricas.
 
 Os números usam ponto decimal sem separador de milhar. O prefixo `R$` em
 `valor_imovel` continua sendo tratado pelo pipeline. `data_entrada` aceita
@@ -121,14 +131,29 @@ positivos. Isso interrompe a automação para revisão, **sem corrigir ou descar
 dados silenciosamente**. Formatos novos não suportados exigem decisão explícita
 e teste antes de alterar o contrato. As regras da Parte 1 permanecem intactas.
 
-O pipeline espera entrada bruta e mantém as correções específicas de PR-000079
-e PR-000081. Se essas propostas reaparecerem com valores diferentes dos esperados,
-a execução falhará; não é uma rotina para reaplicar sobre o CSV já tratado.
+As correções do pipeline são **regras por condição, não por ID**, e cada uma
+registra no log os IDs afetados:
+
+| Condição | Ação |
+|---|---|
+| `etapa_max_funil` > 6 em proposta Contratada com assinatura e taxa | corrigida para 6 |
+| `etapa_max_funil` > 6 sem essa evidência | mantida; a validação acima interrompe a execução |
+| `idade_cliente` fora de 18–100 | vira nula, linha mantida |
+| assinatura anterior à entrada | mantida e sinalizada para revisão na origem |
+
+Assim a rotina continua funcionando se a origem corrigir PR-000079/PR-000081, e
+detecta o mesmo tipo de erro se ele aparecer em outra linha. Uma versão anterior
+corrigia esses dois IDs com `assert`, o que quebraria o relatório no primeiro
+arquivo corrigido na origem e deixaria passar erros iguais em linhas novas.
 
 Cada execução acrescenta ao log início, entrada, contagens, avisos e sucesso ou
 falha. Os logs não incluem linhas completas nem dados individuais da base.
 Código de saída **0**: HTML gerado (pode conter avisos); **1**: falha de
-processamento ou escrita; **2**: argumentos inválidos. Se nem o log puder ser
+processamento ou escrita; **2**: argumentos inválidos; **3**: HTML gerado, mas a
+última entrada da base é anterior à semana selecionada (base possivelmente
+desatualizada). O código 3 existe para que o Agendador de Tarefas registre a
+execução como anormal: com 0, um relatório vazio enviado à liderança pareceria
+uma segunda-feira normal. Se nem o log puder ser
 criado, o erro aparece no terminal. Não há fallback silencioso para outra base.
 
 O HTML é escrito em arquivo temporário e substituído atomicamente ao concluir.

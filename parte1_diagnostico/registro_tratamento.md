@@ -20,6 +20,16 @@ coluna afetada**, não jogar fora a proposta inteira.
 | 9 | Assinatura anterior à entrada: PR-001556 tem `data_entrada = 2025-09-11`, `data_assinatura_contrato = 2025-05-08` e `tempo_analise_dias = 53` | 1 linha; nas outras 1.240 das 1.241 contratadas, entrada + tempo de análise coincide com a assinatura | **Mantidos a linha e os valores originais; inconsistência sinalizada neste registro para revisão na origem**, sem criar coluna ou imputar data | A data inferida seria 2025-11-03, mas o padrão das demais linhas não prova qual campo está errado. Preservar evita substituir evidência por suposição. Nenhuma métrica publicada da Parte 1 muda: as análises usam entrada e status, não a assinatura; a simulação da correção também preservou as saídas dos scripts 02, 03 e 05. Análises futuras por assinatura exigem resolver ou tratar explicitamente esta inconsistência. |
 | — | `id_proposta` duplicado, linhas 100% duplicadas, nulos em outras colunas, valores negativos/zero, `score_credito` fora de faixa plausível (0–1000) | — | Nenhum encontrado | Checado e descartado como não-problema. Registrado aqui para deixar explícito que foi verificado, não ignorado. |
 
+## Como os itens 4, 5 e 9 são aplicados no código
+
+Em `pipeline/tratamento.py`, esses itens são **regras por condição, não correções por ID**:
+etapa > 6 só vira 6 quando a linha confirma a contratação (status, assinatura e taxa);
+idade fora de 18–100 vira nula; assinatura anterior à entrada é só sinalizada. Cada regra
+registra no log os IDs afetados. Nesta base elas atingem exatamente PR-000081, PR-000079 e
+PR-001556, e o CSV tratado é idêntico ao gerado pela versão anterior, que corrigia os dois
+primeiros por ID. A mudança importa para a Parte 2: a base da semana seguinte pode vir com
+esses casos já corrigidos na origem, ou com o mesmo erro em outra linha.
+
 ## Decisões pendentes / assumidas sem confirmação externa
 - Assumido que a política de LTV máximo 60% se aplica a `valor_solicitado / valor_imovel` (avaliação do imóvel), não a algum outro valor de referência (ex: valor de mercado vs. valor de avaliação) — o dicionário não distingue os dois, então tratamos como a mesma coisa.
 - Assumido que `etapa_max_funil` representa a etapa mais avançada que a proposta atingiu, então propostas com `status_final` de reprovação/desistência em etapas intermediárias são leituras válidas do funil (não erros).

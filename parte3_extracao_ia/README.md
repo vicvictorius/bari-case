@@ -68,8 +68,22 @@ Além da saída, o comando grava `falhas_saida_extracao_local.json` na mesma
 pasta. Cada falha contém `arquivo_origem` e `ultimo_erro`, com a mensagem
 final da exceção após o esgotamento das tentativas. Quando não há falhas,
 o arquivo recebe `[]`, substituindo registros de uma execução anterior.
-A saída parcial com os laudos válidos é preservada, e o processo retorna
-código `1` quando há falhas. O caminho do arquivo de falhas aparece no log.
+O processo retorna código `1` quando há falhas. O caminho do arquivo de falhas
+aparece no log.
+
+**A saída sempre tem um registro por laudo.** Um laudo que falha em todas as
+tentativas não some do JSON: ele aparece com `"extracao": "falhou"`, o
+`motivo_falha` e todos os 10 campos com `valor: null` e
+`status: "nao_extraido"`. Os que deram certo têm `"extracao": "ok"`. Quem
+consome a saída filtra por `extracao` em vez de ter que perceber que faltou
+um laudo. `nao_extraido` não faz parte do schema enviado ao modelo: é um
+status do pipeline, que significa "não sabemos, precisa de revisão humana".
+Para o avaliador, esse registro conta exatamente como um laudo ausente, então
+as métricas não mudam (testado: o relatório gerado a partir dos artefatos da
+execução atual, convertidos para esse formato, é idêntico ao versionado).
+
+Os artefatos versionados da execução atual foram gerados antes dessa mudança e
+foram preservados como estavam: neles, laudo_1 aparece só no arquivo de falhas.
 
 Também foi utilizado `qwen3:1.7b` durante o desenvolvimento para permitir
 a execução em hardware com menor quantidade de VRAM.
@@ -95,7 +109,8 @@ python -m pytest testes/ -v
 Os testes não exigem Ollama nem acesso à API da Anthropic, pois utilizam
 clientes simulados e dados sintéticos quando necessário. Após a inclusão do
 registro de falhas, passaram **112 testes da Parte 3** e **149 testes na suíte
-completa**.
+completa**. Após as regras genéricas do pipeline e o registro de falha na
+saída, são **115 testes da Parte 3** e **169 na suíte completa**.
 
 ## Pipeline alternativo — Anthropic
 

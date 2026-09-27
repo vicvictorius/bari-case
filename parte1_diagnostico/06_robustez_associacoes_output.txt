@@ -1,0 +1,19 @@
+--- Correspondente x demais canais, por faixa de score ---
+Score médio: Correspondente 655 | demais canais 675
+             n_corresp  conv_corresp_%  n_demais  conv_demais_%  diferenca_pp
+faixa_score                                                                  
+<=500               31             0.0        50            2.0          -2.0
+501-600            381             8.7       696           11.5          -2.8
+601-650            447            13.9       983           16.5          -2.6
+651-700            425            12.9      1179           21.0          -8.1
+701-750            313            20.8      1005           25.3          -4.5
+>750               175            21.7       715           34.0         -12.3
+
+Conversão do Correspondente com o mix de score dos demais canais:
+  observada 14.3% | padronizada 15.4% | demais canais 21.3%
+  gap total -7.1 p.p. | gap após padronizar -5.9 p.p.
+
+--- Qui-quadrado de independência: variável x contratação ---
+canal_origem: qui2 = 42.0, gl = 4, p = < 0,0001
+uf: qui2 = 11.8, gl = 9, p = 0,2261
+tipo_imovel: qui2 = 4.0, gl = 4, p = 0,4079

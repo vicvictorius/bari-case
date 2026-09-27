@@ -289,3 +289,21 @@ def test_acuracia_de_valor_geral_separa_status_certo_de_valor_certo():
     assert resultado["valores_corretos"] == 9
     assert resultado["valores_aplicaveis"] == 10
     assert resultado["acuracia_valor_geral"] == 0.9
+def test_registro_de_falha_conta_igual_a_laudo_ausente():
+    """Laudo marcado como falha na saída não pode inflar nem distorcer a métrica."""
+    from extrator_local import registro_de_falha
+
+    gabarito = json.loads(
+        Path(__file__).resolve().parent.parent.joinpath("gabarito.json").read_text(encoding="utf-8")
+    )
+    gabarito_idx = {r["arquivo_origem"]: r for r in gabarito}
+
+    sem_laudo = {k: v for k, v in gabarito_idx.items() if k != "laudo_5.txt"}
+    com_registro_de_falha = {**sem_laudo, "laudo_5.txt": registro_de_falha("laudo_5.txt", "erro")}
+
+    ausente = avaliar(extracao=sem_laudo, gabarito=gabarito_idx)
+    falha = avaliar(extracao=com_registro_de_falha, gabarito=gabarito_idx)
+
+    assert falha["arquivos_faltando_na_extracao"] == ["laudo_5.txt"]
+    assert falha["total_laudos_extraidos"] == 16
+    assert falha["acuracia_status_geral"] == ausente["acuracia_status_geral"]
