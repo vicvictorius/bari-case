@@ -426,10 +426,13 @@ e a cobertura permaneceu em **16/17**. É uma única execução de um gerador
 variável, nos mesmos laudos usados para ajustar o prompt; as diferenças
 não demonstram um efeito causal do validador nem generalização.
 
-A falha atual foi no `laudo_1.txt`: `matricula` e `onus` permaneceram com
-`status="presente"` e `valor=None` após as tentativas. A regra já existente
-de valor obrigatório rejeitou o registro; o log não atribui essa falha à
-nova rejeição de prefixos textuais.
+A falha atual foi no `laudo_1.txt`. O [log detalhado das três tentativas](parte3_extracao_ia/evidencia_falha_laudo_1.md)
+registra `status="presente"` e `valor=None` no `input` de `matricula` e `onus`
+em cada tentativa. Esses valores acionaram a regra já existente de valor
+obrigatório. A conclusão se apoia nesses avisos completos: a mensagem final
+do JSON de falhas trunca o `input_value` e, sozinha, não distingue `None`
+de texto vazio após a limpeza. O motivo de o modelo devolver `None` não
+foi determinado.
 
 Na execução com schema antigo, os erros incluíam números com texto em volta,
 trocas entre área privativa e área total e divergências em campos textuais.
