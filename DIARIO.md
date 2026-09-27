@@ -32,7 +32,7 @@ A distinção mais importante foi entre **status correto** e **valor correto**. 
 
 **Onde aprendi:** principalmente nas execuções reais contra os 17 laudos, complementadas por conversas com o Claude sobre como validar saídas de LLM.
 
-**Quanto tempo levou:** não cronometrei. Reconstruindo pelos commits, estimo cerca de **2h** dedicadas especificamente a esse aprendizado (desenhar o critério de avaliação, investigar o bug do `valor=None` e corrigir o avaliador), dentro das ~5h ativas da Parte 3.
+**Quanto tempo levou:** não cronometrei. Reconstruindo pelos commits, estimo cerca de **3h** dedicadas especificamente a esse aprendizado, boa parte na madrugada de 26/09, enquanto os modelos rodavam: estudar como validar saídas de LLM, desenhar o critério de avaliação, investigar o bug do `valor=None` e corrigir o avaliador. Esse tempo está dentro das ~7h–8h da Parte 3.
 
 ## c) Autocrítica
 
