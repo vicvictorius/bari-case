@@ -2,54 +2,56 @@
 
 ## a) Registro de uso de IA
 
-Durante o desafio utilizei IA de duas formas: como **assistente de desenvolvimento** e como **componente da solução**. Usei principalmente Claude para apoiar discussões sobre profiling, tratamento dos dados, análise do funil, automação e arquitetura da extração. Na Parte 3, utilizei modelos locais via Ollama: Qwen3 1.7B e Qwen2.5 7B.
+**Ferramentas e para quê**
 
-Procurei não assumir que uma resposta estava correta apenas porque o código executava. Na normalização de `canal_origem`, por exemplo, uma solução sugerida rodava sem erros, mas a inspeção do CSV mostrou que algumas variantes continuavam existindo. Identifiquei que os espaços precisavam ser tratados antes do mapeamento e corrigi a ordem da transformação.
+- **Claude (chat):** principal assistente. Usei para discutir o profiling e as decisões de tratamento, escrever boa parte do código e dos testes das três partes e, no fim, revisar o repositório inteiro contra o enunciado. As decisões de negócio (o que corrigir, o que manter, qual métrica usar) foram minhas; a IA propunha e eu aceitava, recusava ou pedia outra abordagem.
+- **ChatGPT:** usado na etapa final, a partir de um prompt com a lista de correções levantadas na revisão.
+- **Ollama com Qwen3 1.7B e Qwen2.5 7B:** não como assistente, mas como componente da solução na Parte 3.
 
-Na extração dos laudos, o modelo chegou a produzir `status=presente` com `valor=None`. Em vez de corrigir apenas o prompt, adicionei validação no schema Pydantic e um teste de regressão. Também encontrei um erro no avaliador: valores equivalentes em representações numéricas ou formatos de data diferentes eram classificados como divergências. Corrigi a normalização e criei testes. Já erros reais do modelo, como a confusão entre `area_privativa_m2` e `area_total_m2`, foram mantidos na avaliação em vez de criar regras específicas para fazer a amostra passar.
+**Situações em que a IA errou ou entregou algo incompleto**
 
-A IA também apoiou o rascunho inicial do gabarito, posteriormente revisado manualmente. Por isso, documentei que ele não constitui um *gold standard* humano independente.
-
-O principal aprendizado foi que a IA acelerou investigação e implementação, mas não substituiu **validação, testes, comparação dos resultados e responsabilidade técnica sobre a solução**.
+1. **Normalização de canal.** Pedi para padronizar `canal_origem`. O código veio certo na aparência e rodou sem erro, mas, ao reabrir o CSV tratado, as variantes continuavam lá: três delas tinham espaço no final, e o mapeamento comparava `"mídia paga "` com `"mídia paga"`. Coloquei o `.str.strip()` antes do mapeamento e registrei o caso. Desde então passei a conferir a saída, não só a ausência de erro.
+2. **Gabarito da Parte 3.** A IA fez o rascunho do gabarito dos 17 laudos. Na revisão, os laudos 7 (ano "informado pelo proprietário") e 17 (sem ônus "segundo o proprietário", sem certidão) tinham sido tratados como casos isolados. Percebi que eram o mesmo padrão, informação presente mas não verificada, e documentei isso como uma única limitação do schema. Não criei um quarto status porque a extração já estava rodando e mudar o contrato no meio invalidaria a comparação.
+3. **Código "pronto" que nunca rodou.** A primeira versão da Parte 3 usava a API da Anthropic. O código tinha testes com cliente simulado, mas nunca foi executado de verdade, e eu não tinha como pagar a API. Pedi uma versão com Ollama e rodei na minha máquina. A GT 1030 (2 GB) só conseguia carregar uma fração do Qwen2.5 7B, então a primeira rodada completa foi com o Qwen3 1.7B. Foi essa execução real que revelou o `status=presente` com `valor=None` no laudo_15 e o bug de normalização do avaliador. Aprendi que teste com mock prova o encanamento, não o resultado.
+4. **A própria revisão da IA errou.** Na revisão final, a IA afirmou que a região teria uma amplitude de conversão maior que ticket e tipo de imóvel, sugerindo mais importância. Quando a análise foi implementada, o teste qui-quadrado deu p ≈ 0,23: a diferença entre UFs não é significativa, e uma amplitude grande é esperada só por acaso com 10 grupos. Mantive a linha na tabela, mas com essa ressalva.
+5. **Código da revisão final.** As correções da última rodada (regras genéricas no pipeline, script de estratificação, registro de falha na Parte 3) foram escritas pela IA. Eu revisei o diff, rodei a suíte completa (169 testes) e confirmei que o CSV tratado continuou idêntico byte a byte ao anterior antes de fazer o merge.
 
 ## b) O que aprendi do zero
 
-Aprendi **como avaliar de forma estruturada um extrator baseado em LLM**. Antes do projeto, eu sabia que um modelo poderia transformar texto em dados estruturados, mas não tinha uma metodologia clara para tornar essa avaliação mensurável e auditável.
+Aprendi **como avaliar de forma estruturada um extrator baseado em LLM**. Eu sabia que um modelo podia transformar texto em dados, mas não tinha um método para medir se ele acertou.
 
 Passei a separar três responsabilidades:
 
 ```text
 LLM       → interpreta o documento
 schema    → define e valida o contrato
-avaliador → mede o resultado
+avaliador → mede o resultado contra uma referência
 ```
 
-Criei um gabarito de comparação e passei a distinguir **status correto** de **valor correto**. O Qwen2.5 7B, por exemplo, obteve 92,9% de acurácia de status nos 17 laudos, mas isso não significa que 92,9% dos valores foram extraídos corretamente.
+A distinção mais importante foi entre **status correto** e **valor correto**. O Qwen2.5 7B chegou a 92,9% de acurácia de status, mas só 63,6% de acurácia de valor na mesma execução: acertar que o campo existe não é acertar o conteúdo. Também aprendi que o avaliador precisa de testes: o bug de normalização classificava `78.40` e `78,40` como diferentes, e eu teria concluído que o modelo era pior do que era.
 
-Também aprendi que o próprio avaliador precisa ser testado: o bug de normalização mostrou que uma métrica incorreta pode levar a uma conclusão incorreta sobre o modelo. Ao final, deixei de enxergar uma integração com LLM apenas como `prompt → resposta` e passei a tratá-la como um sistema com contrato, validação, retry, referência de comparação e auditoria.
+**Onde aprendi:** principalmente nas execuções reais contra os 17 laudos, complementadas por conversas com o Claude sobre como validar saídas de LLM.
 
-**Onde aprendi:** principalmente na prática, nas execuções reais contra os 17 laudos. Os bugs do `status=presente` com `valor=None` e da normalização do avaliador ensinaram mais do que qualquer leitura. Complementei com conversas com o Claude sobre como validar a saída de um LLM.
+**Quanto tempo levou:** não cronometrei. Reconstruindo pelos commits, estimo cerca de **2h** dedicadas especificamente a esse aprendizado (desenhar o critério de avaliação, investigar o bug do `valor=None` e corrigir o avaliador), dentro das ~5h ativas da Parte 3.
 
-**Quanto tempo levou:** não medi separadamente, porque o aprendizado aconteceu junto com a implementação. Ele ocorreu dentro das cerca de **4 horas** que dediquei à Parte 3, registradas no README.
+## c) Autocrítica
 
-## c) Autocrítica e o que faria com mais 40 horas
+**O que está fraco:**
 
-Com mais **40 horas**, minha primeira prioridade seria aumentar a confiabilidade da Parte 3. O benchmark possui apenas 17 laudos e o gabarito teve rascunho assistido por IA e revisão de uma única pessoa. Eu ampliaria a amostra, separaria dados de desenvolvimento e avaliação e utilizaria revisão humana independente.
+- A avaliação da Parte 3 usa só 17 laudos, e o prompt foi ajustado olhando para os mesmos laudos. Os números são otimistas para laudos novos.
+- O gabarito teve rascunho da IA e revisão de uma única pessoa, eu.
+- A Parte 1 é descritiva: a estratificação do Correspondente controla só o score, e nenhuma análise prova causa.
+- O volume de código cresceu mais rápido do que a minha revisão linha a linha. Domino as decisões e o comportamento, e os testes cobrem os casos críticos, mas partes do HTML e do JavaScript do relatório eu conheço pelo comportamento, não linha por linha.
 
-Também evoluiria o schema para representar melhor informações presentes, mas não documentalmente verificadas, e revisaria a modelagem das diferentes áreas dos imóveis.
+**Com mais 40 horas:**
 
-Na Parte 1, buscaria histórico de eventos do funil para investigar tempo entre etapas, períodos de espera, retornos e motivos operacionais de abandono. O dataset atual mostra melhor o resultado final do que o processo que levou até ele, limitando conclusões causais.
+1. Ampliar a amostra de laudos, separar desenvolvimento de avaliação e ter um segundo revisor independente para o gabarito.
+2. Implementar o status `nao_verificado` no schema.
+3. Na Parte 1, um modelo multivariado (score, LTV, canal e ticket juntos) e, com acesso a eventos do funil, analisar o tempo entre etapas.
+4. Na Parte 2, agendamento real, alerta de falha e histórico dos relatórios.
 
-Na Parte 2, aproximaria a automação de um cenário operacional com agendamento, monitoramento das execuções, alertas de falha e histórico dos relatórios.
+**Pergunta que eu faria ao time de negócios antes de começar:**
 
-Minha principal autocrítica é que algumas decisões foram tomadas com amostra pequena e dados limitados sobre o processo. Com mais tempo, eu priorizaria **validar melhor as conclusões antes de aumentar a complexidade da solução**.
+> **O que acontece entre a entrada de uma proposta na análise de crédito e a saída como "Sem retorno" ou "Desistiu"?**
 
-## d) Pergunta de negócio que eu faria ao Bari
-
-> **Quais eventos e motivos operacionais acontecem entre a entrada de uma proposta na análise de crédito e sua saída dessa etapa, especialmente nos casos classificados como "Sem retorno" ou "Desistiu"?**
-
-A análise identificou a etapa de Análise de Crédito como o maior ponto de valor solicitado não contratado e mostrou quantidade relevante de propostas terminando como `Sem retorno` ou `Desistiu`. Entretanto, o dataset não explica completamente o processo anterior a esses desfechos.
-
-Eu buscaria entender quem precisava responder, tempo de espera, documentos pendentes, tentativas de contato, SLAs e motivos reais de desistência. Isso permitiria diferenciar falta de resposta do cliente, demora documental, perda de competitividade e atrasos internos.
-
-Com esse contexto, a recomendação poderia evoluir de uma oportunidade descritiva para uma intervenção específica de comunicação, processo, SLA, documentação, produto ou acompanhamento comercial. **Eu não atribuiria uma causa apenas a partir do dataset fornecido; validaria o mecanismo com as pessoas que conhecem a operação.**
+A etapa 3 concentra a maior perda de valor, e a maior parte não é reprovação. Mas a base mostra o desfecho, não o processo: quem precisava responder, quanto tempo esperou, que documento faltou, quantas tentativas de contato houve. Com isso, a recomendação de follow-up deixaria de ser uma estimativa descritiva e viraria uma intervenção específica. Eu não atribuiria uma causa só com o dataset; validaria com quem opera o funil.
