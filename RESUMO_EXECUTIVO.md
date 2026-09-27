@@ -1,30 +1,32 @@
 # Resumo Executivo — Diagnóstico do Funil de Crédito
 
-**A percepção da liderança se confirma em parte.** O problema do canal Correspondente é real e consistente. A queda de conversão, não: a diferença é pequena e está dentro do que o acaso explicaria. A maior perda de valor, porém, está na Análise de Crédito, e a maior parte dela não é reprovação: é cliente que desiste ou para de responder.
+## Resposta às perguntas da liderança
 
-Conversão geral no período: **19,39%** das propostas viram contrato.
+**O canal Correspondente converte menos: confirmado.** De cada 100 propostas que chegam por ele, 14 viram contrato, contra 21 nos demais canais. A diferença aparece em todo o período e se mantém quando comparamos clientes da mesma faixa de score, ou seja, não é apenas o canal trazendo clientes piores. E o canal está ganhando espaço: passou de 26,5% para 28,5% das propostas de 2024 para 2025.
 
-## O que os dados mostram
+**A queda da conversão ainda não está comprovada.** A conversão foi de 20,4% em 2024 para 18,7% em 2025 (propostas de janeiro a outubro; as mais recentes ainda estão em andamento). A diferença é pequena demais para descartar que seja oscilação normal. Vale acompanhar, mas sozinha não justifica uma mudança de rumo.
 
-**1. A Análise de Crédito (etapa 3) concentra a maior perda de valor.** São **R$ 703 milhões** em crédito solicitado que não virou contrato, **35,1%** de toda a perda do funil. Nessa etapa, **1.191 propostas (R$ 471,7 mi)** saíram por desistência ou falta de retorno, não por reprovação.
+## Onde o funil perde mais valor
 
-**2. O canal Correspondente é o problema confirmado; a queda de conversão ainda não.** O Correspondente converte **14,3%**, contra **21,3%** dos demais canais somados, diferença que se mantém ao longo do tempo e não é explicada pelo acaso nem pelo score dos clientes: o canal converte menos **em todas as faixas de score**. Ele também cresce em volume. Já a conversão geral passou de **20,4% (2024)** para **18,7% (jan–out/2025)**, mas essa variação **não é estatisticamente significativa**: é um sinal a acompanhar, não uma queda comprovada.
+Em cerca de dois anos, **R$ 2,0 bilhões** em crédito solicitado não viraram contrato. Não é prejuízo: é negócio que deixou de acontecer. No total, 19,4% das propostas viram contrato.
 
-**3. Score é o que mais separa quem contrata de quem não contrata.** A diferença de conversão entre faixas de score chega a **30,4 pontos percentuais**, seguida de LTV e canal. É associação, não causa.
+A maior parte dessa perda está na **Análise de Crédito: R$ 703 milhões**, 35% do total. E cerca de **dois terços** disso (R$ 472 milhões, 1.191 propostas) não foi reprovação: **o cliente desistiu ou parou de responder**.
 
-## Recomendações, em ordem de prioridade
+O fator que mais diferencia quem contrata é o **score de crédito**: acima de 750, 32% contratam; até 500, só 1%. Em seguida vêm o LTV (valor pedido ÷ valor do imóvel) e o canal. São padrões observados, não causas comprovadas.
 
-| # | Ação | Oportunidade estimada | Premissa |
+## O que recomendamos, em ordem de prioridade
+
+| # | Ação | Potencial no período | Como chegamos ao número |
 |---|---|---|---|
-| 1 | **Follow-up ativo** das propostas paradas na Análise de Crédito, começando pelas de maior valor | **~119 contratos / R$ 47 mi** | recuperar 10% do valor perdido por desistência e falta de retorno na etapa 3 |
-| 2 | **Revisar o canal Correspondente** (qualificação, perfil e processo) antes de ampliá-lo | **~126 contratos / R$ 48 mi** | canal atingir a conversão média dos outros canais |
-| 3 | **Validar a regra de LTV de 60%** com Crédito antes de automatizar um bloqueio | reduzir risco e retrabalho | **124 contratos** aparecem acima de 60% (mediana 63,3%, máximo 79%) |
+| 1 | **Acompanhar ativamente os clientes durante a Análise de Crédito**, começando pelas propostas de maior valor | **~119 contratos / R$ 47 mi** | se 10% do valor perdido por desistência e falta de retorno nessa etapa fosse recuperado |
+| 2 | **Entender por que o Correspondente converte menos** (qualificação, perfil, processo) antes de ampliar o canal | **~126 contratos / R$ 48 mi** | se o canal convertesse como a média dos outros |
+| 3 | **Rever com Crédito os contratos acima do limite de LTV** antes de criar um bloqueio automático | redução de risco, não de receita | 124 contratos foram fechados acima do limite de 60%, chegando a 79% |
 
-Os valores são **cenários de oportunidade** no período da base (~2 anos), não previsão de receita.
+Os valores são estimativas de oportunidade, não previsão de receita.
 
-## Antes de agir, confirmar com a operação
+## O que confirmar com a operação antes de agir
 
-- **Por que** o cliente desiste ou some na Análise de Crédito: prazo, documentação, contato ou taxa? A base mostra o resultado, não o motivo.
-- **Se o LTV da base é o mesmo da política**, e se os 124 casos acima de 60% são exceções aprovadas ou falhas de controle.
+- **Por que o cliente desiste na Análise de Crédito:** prazo, documentação, contato ou taxa? Os dados mostram que ele desiste, não o motivo.
+- **Se o LTV desta base é calculado como na política de crédito**, e se os 124 contratos acima de 60% foram exceções aprovadas ou falhas de controle.
 
-*Dados sintéticos fornecidos para o processo seletivo. Análise descritiva; detalhes e premissas em `parte1_diagnostico/04_respostas_parte1.md`.*
+*Dados sintéticos fornecidos para o processo seletivo. Detalhes e premissas em `parte1_diagnostico/04_respostas_parte1.md`.*
