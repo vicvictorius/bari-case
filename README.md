@@ -719,17 +719,24 @@ DIARIO.md
 
 # Tempo de desenvolvimento
 
-O desenvolvimento do case levou aproximadamente **10h30 a 11h30**, distribuídas da seguinte forma:
+O tempo não foi cronometrado durante o desenvolvimento. A estimativa abaixo foi
+**reconstruída a partir dos horários dos commits**: duas sessões (25/09 à noite até a
+madrugada de 26/09, e 26/09 da tarde à noite), somando cerca de 17h de relógio. Desse total,
+cerca de 3h a 4h foram execuções dos modelos locais sobre os 17 laudos, principalmente em
+CPU, sem acompanhamento ativo.
 
-| Etapa | Tempo aproximado |
+| Etapa | Tempo ativo aproximado |
 |---|---:|
-| Parte 1 — Diagnóstico do funil | 3–4h |
-| Parte 2 — Automação | 2h |
-| Parte 3 — Extração com IA | 4h |
-| Parte 4 — Diário e autocrítica | 1h30 |
-| **Total** | **10h30–11h30** |
+| Parte 1 — Profiling, tratamento, diagnóstico e refinamentos | 4h–4h30 |
+| Parte 2 — Automação e interface do relatório | 2h30–3h |
+| Parte 3 — Extração, avaliação e iterações de schema/prompt | 5h–5h30 |
+| Parte 4 — Diário, resumo executivo e documentação | 2h |
+| Revisão final contra o enunciado | 1h |
+| **Total ativo** | **~14h30–16h** |
+| Execução dos modelos locais, sem acompanhamento | +3h–4h |
 
-O tempo inclui análise dos dados, implementação, testes, investigação de erros, experimentação com modelos locais e documentação das decisões.
+O tempo inclui análise dos dados, implementação, testes, investigação de erros,
+experimentação com modelos locais e documentação das decisões.
 
 ---
 
