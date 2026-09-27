@@ -750,6 +750,7 @@ O documento consolida os principais achados do funil, oportunidades identificada
 
 - Python 3
 - pandas
+- SciPy
 - Pydantic
 - pytest
 - Ollama
@@ -760,6 +761,24 @@ O documento consolida os principais achados do funil, oportunidades identificada
 - JavaScript
 - Git
 - GitHub
+
+---
+
+# Fontes externas
+
+Nenhum dado externo entrou nas análises: todos os números vêm dos arquivos fornecidos.
+As referências abaixo sustentam decisões ou ferramentas usadas:
+
+- **Taxa Selic** — usada só como ordem de grandeza para interpretar `taxa_juros_aa` como
+  % ao mês (registro de tratamento, item 8). Histórico oficial: Banco Central do Brasil,
+  <https://www.bcb.gov.br/controleinflacao/historicotaxasjuros>.
+- **Ollama** — execução local dos modelos da Parte 3: <https://ollama.com>.
+- **Qwen2.5 7B Instruct** e **Qwen3 1.7B** — modelos usados na extração. Model cards:
+  <https://huggingface.co/Qwen/Qwen2.5-7B-Instruct> e <https://huggingface.co/Qwen/Qwen3-1.7B>.
+- **Testes estatísticos** — teste z de duas proporções (implementado com a biblioteca
+  padrão em `05_teste_significancia.py`) e qui-quadrado de independência
+  (`scipy.stats.chi2_contingency`, <https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.chi2_contingency.html>).
+- **Claude (Anthropic)** — assistente de desenvolvimento; o uso está documentado em `DIARIO.md`.
 
 ---
 
