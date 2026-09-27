@@ -51,6 +51,11 @@ def montar_json_schema() -> dict:
     }
 
 
+def caminho_falhas(saida: Path) -> Path:
+    """Monta o caminho do JSON versionável com as falhas da execução."""
+    return saida.with_name(f"falhas_{saida.name}")
+
+
 def extrair_um_laudo(
     client: ollama.Client,
     modelo: str,
@@ -89,8 +94,6 @@ def extrair_um_laudo(
             )
 
         except Exception as exc:
-            # Erro de conexão com o servidor Ollama local,
-            # modelo não encontrado etc.
             ultimo_erro = exc
 
             logger.warning(
@@ -155,12 +158,12 @@ def processar_diretorio(
     entrada: Path,
     client: ollama.Client,
     modelo: str,
-) -> tuple[list[dict], int]:
+) -> tuple[list[dict], list[dict]]:
     """Processa todos os .txt de um diretório, isolando falhas por arquivo.
 
-    Retorna os resultados válidos e a quantidade de arquivos que falharam.
-    Isso permite preservar resultados parciais para auditoria sem sinalizar
-    uma execução incompleta como sucesso.
+    Retorna os resultados válidos e os registros das falhas. Isso permite
+    preservar resultados parciais para auditoria sem sinalizar uma execução
+    incompleta como sucesso.
     """
     arquivos = sorted(entrada.glob("*.txt"))
 
@@ -169,10 +172,10 @@ def processar_diretorio(
             "Nenhum .txt encontrado em %s",
             entrada,
         )
-        return [], 0
+        return [], []
 
     resultados: list[dict] = []
-    falhas = 0
+    falhas: list[dict] = []
 
     for caminho in arquivos:
         texto = caminho.read_text(
@@ -199,7 +202,12 @@ def processar_diretorio(
             )
 
         except RuntimeError as exc:
-            falhas += 1
+            falhas.append(
+                {
+                    "arquivo_origem": caminho.name,
+                    "ultimo_erro": str(exc),
+                }
+            )
 
             logger.error(
                 "FALHOU: %s -- %s",
@@ -210,7 +218,7 @@ def processar_diretorio(
     logger.info(
         "Processamento concluído: %d ok, %d falhas, %d total",
         len(resultados),
-        falhas,
+        len(falhas),
         len(arquivos),
     )
 
@@ -271,7 +279,6 @@ def main() -> int:
     )
 
     try:
-        # Checagem rápida: o servidor está de pé?
         client.list()
 
     except Exception as exc:
@@ -315,11 +322,27 @@ def main() -> int:
         args.saida,
     )
 
-    if falhas > 0:
+    arquivo_falhas = caminho_falhas(args.saida)
+
+    arquivo_falhas.write_text(
+        json.dumps(
+            falhas,
+            ensure_ascii=False,
+            indent=2,
+        ),
+        encoding="utf-8",
+    )
+
+    logger.info(
+        "Falhas gravadas em %s",
+        arquivo_falhas,
+    )
+
+    if falhas:
         logger.error(
             "Execução incompleta: %d arquivo(s) falharam. "
             "A saída parcial foi preservada para auditoria.",
-            falhas,
+            len(falhas),
         )
         return 1
 

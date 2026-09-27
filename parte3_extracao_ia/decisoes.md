@@ -1432,10 +1432,10 @@ Os testes cobrem os exemplos acima, textos legítimos (inclusive endereço
 iniciado por número), preservação da evidência, validação do gabarito inteiro
 sem alterar seus valores textuais e retry com cliente simulado.
 
-Validação desta alteração: **107 testes da Parte 3** e **144 testes na suíte
-completa** passaram. A validação foi executada com `python -m pytest
-parte3_extracao_ia/testes -q -p no:cacheprovider` e `python -m pytest -q
--p no:cacheprovider`, respectivamente.
+Validação acumulada após a implementação do registro de falhas descrito
+abaixo: **112 testes da Parte 3** e **149 testes na suíte completa** passaram.
+A validação foi executada com `python -m pytest parte3_extracao_ia/testes -q
+-p no:cacheprovider` e `python -m pytest -q`, respectivamente.
 
 O efeito sobre a acurácia e a cobertura do modelo real **só será conhecido
 com uma nova execução**. Os relatórios e JSONs históricos foram preservados;
@@ -1466,24 +1466,33 @@ permite distinguir essas causas. Portanto, não há evidência suficiente para
 afirmar que essas duas falhas foram rejeições deliberadas de valores
 inválidos pelo schema.
 
-O `.gitignore` exclui `*.log`, e o extrator não grava atualmente um artefato
-estruturado com os detalhes das falhas. Uma nova execução pode gerar novas
-evidências, mas não recupera nem comprova a causa das falhas históricas.
+O `.gitignore` exclui `*.log`, e nas execuções históricas o extrator não
+gravava um artefato estruturado com os detalhes das falhas. O registro em
+JSON foi implementado para as próximas execuções, conforme descrito abaixo.
+Uma nova execução pode gerar novas evidências, mas não recupera nem comprova
+a causa das falhas históricas.
 
-### Melhoria proposta para próximas execuções
+### Registro implementado para próximas execuções
 
-Propõe-se uma alteração pequena em `extrator_local.py`: além de contabilizar
-as falhas, acumular o nome do arquivo e a mensagem final da exceção de cada
-laudo que esgotou as tentativas e gravar essa lista ao lado do JSON de saída,
-com o nome `falhas_<nome_do_arquivo_de_saida>.json`. Por exemplo, para
-`saida_extracao_local.json`, gerar `falhas_saida_extracao_local.json`.
+Foi implementado em `extrator_local.py` o registro de falhas: além de
+contabilizá-las, o pipeline acumula o nome do arquivo e a mensagem final da
+exceção de cada laudo que esgotou as tentativas. A função `caminho_falhas`
+prefixa o nome da saída com `falhas_`, preservando sua pasta e extensão.
+Por exemplo, `saida_extracao_local.json` gera
+`falhas_saida_extracao_local.json`.
 
-Cada registro deve conter `arquivo_origem` e `ultimo_erro`. O arquivo deve
-ser gravado também quando a lista estiver vazia, para não manter falhas de
-uma execução anterior. A saída parcial válida e o retorno de erro de uma
-execução incompleta devem ser preservados. Esse JSON não é excluído pela
-regra `*.log` e pode ser versionado junto dos resultados para auditoria.
+Cada registro contém `arquivo_origem` e `ultimo_erro`, sendo este último
+exatamente `str(exc)` da `RuntimeError` levantada por `extrair_um_laudo`.
+`processar_diretorio` retorna os resultados e a lista de falhas; `main()`
+grava os dois arquivos, inclusive `[]` no arquivo de falhas quando a
+execução não tem falhas, substituindo qualquer registro anterior. A saída
+parcial válida, o retorno `1` quando há falhas e os logs existentes foram
+preservados. Um log adicional informa o caminho do arquivo de falhas.
+Esse JSON não é excluído pela regra `*.log` e pode ser versionado junto
+dos resultados para auditoria.
 
-Esta é uma **proposta ainda não implementada** nesta tarefa documental.
-Os resultados históricos, o extrator e as métricas de avaliação permanecem
-inalterados.
+A proposta **foi implementada** e testada com cliente simulado, cobrindo
+sucesso, falha parcial, falha total e substituição de registros anteriores.
+O schema, a normalização, o prompt, o avaliador e os artefatos históricos
+permanecem inalterados. A execução real com validação textual ainda será
+realizada pelo autor; nenhum resultado novo do modelo é antecipado aqui.

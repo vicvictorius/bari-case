@@ -12,7 +12,8 @@ privativa, área total, ano de construção, valor de avaliação, matrícula,
 | `schema.py` | Contrato de dados (Pydantic): cada campo possui `valor`, `status` (`presente`, `ausente` ou `conflitante`) e `trecho_bruto` de evidência. Áreas e valor são `float`, ano é `int` e data é `date` |
 | `normalizacao.py` | Parsers estritos de número, ano e data; limpeza de símbolos nas extremidades dos campos textuais e rejeição de prefixos artificiais |
 | `extrator.py` | Pipeline alternativo via API da Anthropic, com saída estruturada, validação e nova tentativa quando a resposta é inválida |
-| `extrator_local.py` | Pipeline utilizado na execução real da entrega, via modelos locais com Ollama |
+| `extrator_local.py` | Pipeline local com Ollama; grava a saída e um JSON versionável com os detalhes das falhas |
+| `falhas_*.json` | Artefatos gerados a cada execução: arquivo de origem e mensagem final de cada falha; lista vazia quando não há falhas |
 | `construir_gabarito.py` | Contém o gabarito de referência revisado e gera `gabarito.json` validando os registros pelo schema oficial |
 | `avaliador.py` | Compara a saída do extrator com `gabarito.json` e calcula acurácia por campo |
 | `gabarito.json` | Referência utilizada para avaliar as extrações |
@@ -60,6 +61,13 @@ python extrator_local.py \
   --modelo qwen2.5:7b-instruct
 ```
 
+Além da saída, o comando grava `falhas_saida_extracao_local.json` na mesma
+pasta. Cada falha contém `arquivo_origem` e `ultimo_erro`, com a mensagem
+final da exceção após o esgotamento das tentativas. Quando não há falhas,
+o arquivo recebe `[]`, substituindo registros de uma execução anterior.
+A saída parcial com os laudos válidos é preservada, e o processo retorna
+código `1` quando há falhas. O caminho do arquivo de falhas aparece no log.
+
 Também foi utilizado `qwen3:1.7b` durante o desenvolvimento para permitir
 a execução em hardware com menor quantidade de VRAM.
 
@@ -82,8 +90,8 @@ python -m pytest testes/ -v
 ```
 
 Os testes não exigem Ollama nem acesso à API da Anthropic, pois utilizam
-clientes simulados e dados sintéticos quando necessário. Após a inclusão da
-validação textual, passaram **107 testes da Parte 3** e **144 testes na suíte
+clientes simulados e dados sintéticos quando necessário. Após a inclusão do
+registro de falhas, passaram **112 testes da Parte 3** e **149 testes na suíte
 completa**.
 
 ## Pipeline alternativo — Anthropic

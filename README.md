@@ -465,21 +465,21 @@ Na execução final:
 
 ```text
 Parte 2: 37 testes aprovados
-Parte 3: 107 testes aprovados
+Parte 3: 112 testes aprovados
 
-Total: 144 testes aprovados
+Total: 149 testes aprovados
 ```
 
 A suíte completa foi executada com:
 
 ```bash
-python -m pytest -q -p no:cacheprovider
+python -m pytest -q
 ```
 
 e terminou com:
 
 ```text
-144 passed
+149 passed
 ```
 
 Os testes cobrem, entre outros pontos:
@@ -504,6 +504,7 @@ Os testes cobrem, entre outros pontos:
 - rejeição das saídas com texto em volta observadas na execução real;
 - parsing das respostas do modelo;
 - retry de respostas inválidas;
+- registro versionável das falhas da extração, inclusive lista vazia no sucesso e preservação da saída parcial;
 - detecção de laudos ausentes;
 - regressões encontradas durante o desenvolvimento.
 
