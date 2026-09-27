@@ -1533,14 +1533,31 @@ como incompleta.
 | data_vistoria | 94,1% | 100,0% | — | 17 |
 | responsavel_tecnico | 94,1% | 100,0% | — | 17 |
 
-### Falha preservada e regra responsável
+### Falha preservada e limites do diagnóstico
 
-O `laudo_1.txt` esgotou as três tentativas. O log mostra `matricula` e `onus`
-com `status="presente"` e `valor=None`, embora houvesse informação em
-`trecho_bruto`. A regra `CampoExtraido.valor_obrigatorio_se_presente`, em
-`schema.py`, exige valor não vazio para esse status e rejeitou o registro.
-Essa regra já existia antes da validação textual; a mensagem não atribui
-a falha à rejeição de prefixos artificiais.
+O `laudo_1.txt` esgotou as três tentativas. O [recorte do log detalhado](evidencia_falha_laudo_1.md),
+fornecido pelo autor a partir do terminal, preserva os avisos de `exc.errors()`:
+
+| Tentativa | Horário no log | `matricula.valor` no `input` | `onus.valor` no `input` |
+|---|---|---|---|
+| 1/3 | 20:56:11,760 | `None` | `None` |
+| 2/3 | 20:57:10,321 | `None` | `None` |
+| 3/3 | 20:58:18,604 | `None` | `None` |
+
+Nos dois campos, o status era `presente` e havia informação em `trecho_bruto`.
+Esses valores nulos acionaram `CampoExtraido.valor_obrigatorio_se_presente`,
+em `schema.py`, regra anterior à validação textual. `normalizar_texto`
+retorna texto e não converte símbolos em `None`; portanto, os valores nulos
+registrados não resultam dessa limpeza. O motivo de o modelo devolvê-los
+permanece desconhecido, e o recorte não contém a resposta bruta completa.
+
+A mensagem final abaixo, isoladamente, não sustenta esse diagnóstico:
+o `input_value` está truncado, e a mesma regra também rejeita texto vazio,
+inclusive quando esvaziado pela remoção de símbolos de borda. A atribuição
+a `None` depende dos avisos detalhados acima, não desse resumo.
+O `falhas_*.json` preserva a mensagem final, mas ela pode ser insuficiente
+para diagnóstico. Isso motiva registrar a resposta bruta e distinguir a
+mensagem de limpeza em uma melhoria futura, ainda não implementada aqui.
 
 Mensagem final preservada em `falhas_saida_extracao_local_qwen25-7b-tipado-prompt-v2-textual.json`:
 
@@ -1569,8 +1586,9 @@ afirmar generalização para laudos novos a partir dessa comparação.
 
 Uma validação mais restritiva pode trocar saídas com defeitos por falhas
 explícitas e reduzir a cobertura. Nesta execução, a cobertura não caiu,
-e a falha registrada foi causada pela regra preexistente de valor
-obrigatório. As falhas históricas dos laudos 16 e 4 continuam com causa
+e os avisos detalhados sustentam que a regra preexistente de valor
+obrigatório rejeitou valores nulos em `matricula` e `onus`. Isso não explica
+por que o modelo os devolveu. As falhas históricas dos laudos 16 e 4 continuam com causa
 desconhecida; a evidência desta execução não permite reconstruí-las.
 
 ### Artefatos da execução
@@ -1578,3 +1596,5 @@ desconhecida; a evidência desta execução não permite reconstruí-las.
 - [`saida_extracao_local_qwen25-7b-tipado-prompt-v2-textual.json`](saida_extracao_local_qwen25-7b-tipado-prompt-v2-textual.json)
 - [`relatorio_acuracia_qwen25-7b-tipado-prompt-v2-textual.md`](relatorio_acuracia_qwen25-7b-tipado-prompt-v2-textual.md)
 - [`falhas_saida_extracao_local_qwen25-7b-tipado-prompt-v2-textual.json`](falhas_saida_extracao_local_qwen25-7b-tipado-prompt-v2-textual.json)
+
+- [Recorte do log detalhado da falha do laudo_1](evidencia_falha_laudo_1.md)
