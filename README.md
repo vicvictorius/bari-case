@@ -138,6 +138,9 @@ bari-case/
 │   ├── saida_extracao_local_qwen25-7b.json
 │   ├── relatorio_acuracia_qwen25-7b-tipado-prompt-v2-normalizado.md
 │   ├── saida_extracao_local_qwen25-7b-tipado-prompt-v2.json
+│   ├── saida_extracao_local_qwen25-7b-tipado-prompt-v2-textual.json
+│   ├── relatorio_acuracia_qwen25-7b-tipado-prompt-v2-textual.md
+│   ├── falhas_saida_extracao_local_qwen25-7b-tipado-prompt-v2-textual.json
 │   └── testes/
 │
 ├── DIARIO.md
@@ -376,9 +379,10 @@ Posteriormente, o mesmo experimento foi executado em uma máquina com NVIDIA RTX
 |---|---:|---:|---:|
 | Schema antigo (`valor` sempre texto) | 92,9% (158/170) | 63,6% (91/143) | 17/17 |
 | Schema tipado | 84,7% | 77,3% (99/128) | 16/17 |
-| **Schema tipado + prompt V2 — resultado atual** | **90,6%** | **80,9% (114/141)** | **16/17** |
+| Schema tipado + prompt V2 | 90,6% | 80,9% (114/141) | 16/17 |
+| **Schema tipado + prompt V2 + validação textual — resultado atual** | **90,0%** | **82,5% (113/137)** | **16/17** |
 
-A acurácia de valor condicional evoluiu de **63,6% → 77,3% → 80,9%**.
+A acurácia de valor condicional evoluiu de **63,6% → 77,3% → 80,9% → 82,5%**.
 A execução intermediária com schema tipado está registrada em [`parte3_extracao_ia/decisoes.md`](parte3_extracao_ia/decisoes.md); sua saída não está versionada.
 Os resultados do schema antigo e do V2 possuem saída e relatório versionados.
 
@@ -387,7 +391,7 @@ As métricas respondem perguntas diferentes:
 - **status**: o modelo percebeu corretamente se o campo estava presente, ausente ou conflitante?
 - **valor condicional**: quando gabarito e extração indicam presença, o conteúdo extraído estava certo?
 
-### Resultado atual — schema tipado + prompt V2
+### Resultado atual — schema tipado + prompt V2 + validação textual
 
 | Campo | Status | Valor condicional — métrica conservadora |
 |---|---:|---:|
@@ -397,23 +401,35 @@ As métricas respondem perguntas diferentes:
 | `area_total_m2` | 94,1% | 100,0% |
 | `ano_construcao` | 88,2% | 100,0% |
 | `valor_avaliacao_reais` | 94,1% | 100,0% |
-| `matricula` | 94,1% | 33,3% |
-| `onus` | 76,5% | 50,0% |
+| `matricula` | 94,1% | 40,0% |
+| `onus` | 70,6% | 66,7% |
 | `data_vistoria` | 94,1% | 100,0% |
 | `responsavel_tecnico` | 94,1% | 100,0% |
 
 A métrica principal de valor permanece **conservadora** e considera os campos
-em que gabarito e extração indicam `presente`. Portanto, os **80,9% (114/141)**
+em que gabarito e extração indicam `presente`. Portanto, os **82,5% (113/137)**
 são uma acurácia condicional, que deve ser lida junto dos **16/17 laudos processados**.
 
 A equivalência textual normalizada de `endereco` + `matricula` é de
-**76,7% (23/30)**. Essa métrica é complementar, cobre apenas esses dois campos
+**70,0% (21/30)**. Essa métrica é complementar, cobre apenas esses dois campos
 e não substitui a métrica conservadora nem é diretamente comparável ao resultado
 geral, pois utiliza outro conjunto de campos e outro denominador.
 
 O extrator ainda requer **revisão humana**, principalmente nos campos textuais:
-`endereco` apresenta **26,7%**, `matricula` **33,3%** e `onus` **50,0%** de acurácia
+`endereco` apresenta **26,7%**, `matricula` **40,0%** e `onus` **66,7%** de acurácia
 de valor pela métrica conservadora.
+
+Nesta execução, o status caiu de **90,6% para 90,0%** e a equivalência
+textual de **76,7% (23/30) para 70,0% (21/30)**. O valor condicional subiu
+de **80,9% (114/141) para 82,5% (113/137)**, com mudança no denominador,
+e a cobertura permaneceu em **16/17**. É uma única execução de um gerador
+variável, nos mesmos laudos usados para ajustar o prompt; as diferenças
+não demonstram um efeito causal do validador nem generalização.
+
+A falha atual foi no `laudo_1.txt`: `matricula` e `onus` permaneceram com
+`status="presente"` e `valor=None` após as tentativas. A regra já existente
+de valor obrigatório rejeitou o registro; o log não atribui essa falha à
+nova rejeição de prefixos textuais.
 
 Na execução com schema antigo, os erros incluíam números com texto em volta,
 trocas entre área privativa e área total e divergências em campos textuais.
@@ -436,14 +452,15 @@ Aplicando o schema tipado à saída histórica do Qwen2.5 7B, **13 dos 17 laudos
 
 O schema tipado foi reexecutado contra o modelo, primeiro com o prompt anterior e depois com o prompt V2. Ambas as execuções processaram **16/17 laudos**, com acurácia de valor condicional de **77,3% (99/128)** e **80,9% (114/141)**, respectivamente. A tipagem garante o formato dos campos, mas não dispensa a avaliação do conteúdo nem a revisão humana.
 
-Os campos textuais agora também passam por validação: símbolos conhecidos nas extremidades são removidos e prefixos artificiais são rejeitados para acionar o retry. O efeito no modelo real depende de uma nova execução; os resultados históricos abaixo ainda não medem essa validação. As regras e limitações estão em [`decisoes.md`](parte3_extracao_ia/decisoes.md#validação-dos-campos-textuais-na-saída).
+Os campos textuais agora também passam por validação: símbolos conhecidos nas extremidades são removidos e prefixos artificiais são rejeitados para acionar o retry. A execução real com essa validação foi concluída e é o resultado atual apresentado acima; os artefatos anteriores foram preservados. As regras e limitações estão em [`decisoes.md`](parte3_extracao_ia/decisoes.md#validação-dos-campos-textuais-na-saída).
 
 Os relatórios versionados estão em:
 
 - [Schema antigo](parte3_extracao_ia/relatorio_acuracia_qwen25-7b.md)
-- [Schema tipado + prompt V2 — resultado atual](parte3_extracao_ia/relatorio_acuracia_qwen25-7b-tipado-prompt-v2-normalizado.md)
+- [Schema tipado + prompt V2 — execução anterior](parte3_extracao_ia/relatorio_acuracia_qwen25-7b-tipado-prompt-v2-normalizado.md)
+- [Schema tipado + prompt V2 + validação textual — resultado atual](parte3_extracao_ia/relatorio_acuracia_qwen25-7b-tipado-prompt-v2-textual.md)
 
-A [saída estruturada do V2](parte3_extracao_ia/saida_extracao_local_qwen25-7b-tipado-prompt-v2.json) também está versionada.
+A execução atual inclui a [saída estruturada](parte3_extracao_ia/saida_extracao_local_qwen25-7b-tipado-prompt-v2-textual.json) e o [registro de falhas](parte3_extracao_ia/falhas_saida_extracao_local_qwen25-7b-tipado-prompt-v2-textual.json). A saída histórica do V2 foi preservada.
 
 As decisões de modelagem, erros encontrados e limitações estão documentadas em:
 
@@ -465,21 +482,21 @@ Na execução final:
 
 ```text
 Parte 2: 37 testes aprovados
-Parte 3: 107 testes aprovados
+Parte 3: 112 testes aprovados
 
-Total: 144 testes aprovados
+Total: 149 testes aprovados
 ```
 
 A suíte completa foi executada com:
 
 ```bash
-python -m pytest -q -p no:cacheprovider
+python -m pytest -q
 ```
 
 e terminou com:
 
 ```text
-144 passed
+149 passed
 ```
 
 Os testes cobrem, entre outros pontos:
@@ -504,6 +521,7 @@ Os testes cobrem, entre outros pontos:
 - rejeição das saídas com texto em volta observadas na execução real;
 - parsing das respostas do modelo;
 - retry de respostas inválidas;
+- registro versionável das falhas da extração, inclusive lista vazia no sucesso e preservação da saída parcial;
 - detecção de laudos ausentes;
 - regressões encontradas durante o desenvolvimento.
 
@@ -647,8 +665,8 @@ Algumas limitações foram mantidas explicitamente na entrega:
 - o schema atual possui apenas `presente`, `ausente` e `conflitante`;
 - informações declaradas por uma parte, mas não verificadas documentalmente, ainda não possuem um estado próprio no schema;
 - a implementação da API Anthropic foi testada estruturalmente, mas não executada contra a API real;
-- o resultado atual da Parte 3, com schema tipado + prompt V2, processou 16/17 laudos e obteve 80,9% (114/141) de acurácia de valor condicional;
-- os campos textuais ainda exigem revisão humana: endereco 26,7%, matricula 33,3% e onus 50,0% na métrica conservadora de valor.
+- o resultado atual da Parte 3, com schema tipado + prompt V2 + validação textual, processou 16/17 laudos e obteve 82,5% (113/137) de acurácia de valor condicional;
+- os campos textuais ainda exigem revisão humana: endereco 26,7%, matricula 40,0% e onus 66,7% na métrica conservadora de valor.
 
 Uma evolução considerada para o schema seria adicionar um quarto estado:
 

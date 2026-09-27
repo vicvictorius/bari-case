@@ -1146,10 +1146,11 @@ novos tipos. Os valores não mudaram, só a representação (`"78.40"` virou
 `78.4`). O relatório de acurácia foi regenerado e as métricas continuaram
 as mesmas.
 
-## O que ainda não se sabe
+## Hipóteses antes das reexecuções
 
-O schema tipado **não foi reexecutado contra o modelo**. Três resultados
-são possíveis, e só a execução diz qual acontece:
+Naquele momento, o schema tipado ainda não havia sido reexecutado contra o
+modelo. As execuções posteriores estão registradas nas seções seguintes.
+As hipóteses consideradas antes dessas medições eram:
 
 1. a restrição de tipo e o retry corrigem o formato, e a acurácia de valor sobe;
 2. o modelo passa a emitir números no formato certo, mas errados (por
@@ -1432,15 +1433,15 @@ Os testes cobrem os exemplos acima, textos legítimos (inclusive endereço
 iniciado por número), preservação da evidência, validação do gabarito inteiro
 sem alterar seus valores textuais e retry com cliente simulado.
 
-Validação desta alteração: **107 testes da Parte 3** e **144 testes na suíte
-completa** passaram. A validação foi executada com `python -m pytest
-parte3_extracao_ia/testes -q -p no:cacheprovider` e `python -m pytest -q
--p no:cacheprovider`, respectivamente.
+Validação acumulada após a implementação do registro de falhas descrito
+abaixo: **112 testes da Parte 3** e **149 testes na suíte completa** passaram.
+A validação foi executada com `python -m pytest parte3_extracao_ia/testes -q
+-p no:cacheprovider` e `python -m pytest -q`, respectivamente.
 
-O efeito sobre a acurácia e a cobertura do modelo real **só será conhecido
-com uma nova execução**. Os relatórios e JSONs históricos foram preservados;
-seus resultados não medem esta nova validação textual. A métrica conservadora
-e a métrica complementar do avaliador não foram alteradas.
+A execução com validação textual foi concluída e está documentada na seção
+"Execução final com validação textual" abaixo. Os relatórios e JSONs das
+execuções anteriores foram preservados. A métrica conservadora e a métrica
+complementar do avaliador não foram alteradas.
 
 ## Registro das falhas das execuções com schema tipado
 
@@ -1466,24 +1467,114 @@ permite distinguir essas causas. Portanto, não há evidência suficiente para
 afirmar que essas duas falhas foram rejeições deliberadas de valores
 inválidos pelo schema.
 
-O `.gitignore` exclui `*.log`, e o extrator não grava atualmente um artefato
-estruturado com os detalhes das falhas. Uma nova execução pode gerar novas
-evidências, mas não recupera nem comprova a causa das falhas históricas.
+O `.gitignore` exclui `*.log`, e nas execuções históricas o extrator não
+gravava um artefato estruturado com os detalhes das falhas. O registro em
+JSON foi implementado para as próximas execuções, conforme descrito abaixo.
+Uma nova execução pode gerar novas evidências, mas não recupera nem comprova
+a causa das falhas históricas.
 
-### Melhoria proposta para próximas execuções
+### Registro implementado para próximas execuções
 
-Propõe-se uma alteração pequena em `extrator_local.py`: além de contabilizar
-as falhas, acumular o nome do arquivo e a mensagem final da exceção de cada
-laudo que esgotou as tentativas e gravar essa lista ao lado do JSON de saída,
-com o nome `falhas_<nome_do_arquivo_de_saida>.json`. Por exemplo, para
-`saida_extracao_local.json`, gerar `falhas_saida_extracao_local.json`.
+Foi implementado em `extrator_local.py` o registro de falhas: além de
+contabilizá-las, o pipeline acumula o nome do arquivo e a mensagem final da
+exceção de cada laudo que esgotou as tentativas. A função `caminho_falhas`
+prefixa o nome da saída com `falhas_`, preservando sua pasta e extensão.
+Por exemplo, `saida_extracao_local.json` gera
+`falhas_saida_extracao_local.json`.
 
-Cada registro deve conter `arquivo_origem` e `ultimo_erro`. O arquivo deve
-ser gravado também quando a lista estiver vazia, para não manter falhas de
-uma execução anterior. A saída parcial válida e o retorno de erro de uma
-execução incompleta devem ser preservados. Esse JSON não é excluído pela
-regra `*.log` e pode ser versionado junto dos resultados para auditoria.
+Cada registro contém `arquivo_origem` e `ultimo_erro`, sendo este último
+exatamente `str(exc)` da `RuntimeError` levantada por `extrair_um_laudo`.
+`processar_diretorio` retorna os resultados e a lista de falhas; `main()`
+grava os dois arquivos, inclusive `[]` no arquivo de falhas quando a
+execução não tem falhas, substituindo qualquer registro anterior. A saída
+parcial válida, o retorno `1` quando há falhas e os logs existentes foram
+preservados. Um log adicional informa o caminho do arquivo de falhas.
+Esse JSON não é excluído pela regra `*.log` e pode ser versionado junto
+dos resultados para auditoria.
 
-Esta é uma **proposta ainda não implementada** nesta tarefa documental.
-Os resultados históricos, o extrator e as métricas de avaliação permanecem
-inalterados.
+A proposta **foi implementada** e testada com cliente simulado, cobrindo
+sucesso, falha parcial, falha total e substituição de registros anteriores.
+O schema, a normalização, o prompt, o avaliador e os artefatos históricos
+permanecem inalterados. O autor realizou a execução real com validação
+textual, cujos resultados estão registrados a seguir.
+
+
+## Execução final com validação textual
+
+O autor executou `qwen2.5:7b-instruct` via Ollama com schema tipado, prompt
+V2, validação textual e registro de falhas em JSON. Os resultados abaixo
+reproduzem o relatório e o log fornecidos pelo autor, sem reexecutar ou
+alterar os artefatos históricos.
+
+| Métrica | V2 anterior | V2 + validação textual — resultado atual |
+|---|---:|---:|
+| Acurácia de status | 90,6% | 90,0% |
+| Acurácia de valor condicional | 80,9% (114/141) | 82,5% (113/137) |
+| Equivalência textual — endereco + matricula | 76,7% (23/30) | 70,0% (21/30) |
+| Laudos processados | 16/17 | 16/17 |
+| Laudo ausente | laudo_4.txt | laudo_1.txt |
+
+O log encerrou o processamento com `16 ok, 1 falhas, 17 total`. A saída
+parcial e o arquivo de falhas foram gravados, e a execução foi sinalizada
+como incompleta.
+
+### Resultado atual por campo
+
+| Campo | Status | Valor condicional | Equivalência textual | n |
+|---|---:|---:|---:|---:|
+| tipo_imovel | 88,2% | 86,7% | — | 17 |
+| endereco | 88,2% | 26,7% | 73,3% | 17 |
+| area_privativa_m2 | 94,1% | 100,0% | — | 17 |
+| area_total_m2 | 94,1% | 100,0% | — | 17 |
+| ano_construcao | 88,2% | 100,0% | — | 17 |
+| valor_avaliacao_reais | 94,1% | 100,0% | — | 17 |
+| matricula | 94,1% | 40,0% | 66,7% | 17 |
+| onus | 70,6% | 66,7% | — | 17 |
+| data_vistoria | 94,1% | 100,0% | — | 17 |
+| responsavel_tecnico | 94,1% | 100,0% | — | 17 |
+
+### Falha preservada e regra responsável
+
+O `laudo_1.txt` esgotou as três tentativas. O log mostra `matricula` e `onus`
+com `status="presente"` e `valor=None`, embora houvesse informação em
+`trecho_bruto`. A regra `CampoExtraido.valor_obrigatorio_se_presente`, em
+`schema.py`, exige valor não vazio para esse status e rejeitou o registro.
+Essa regra já existia antes da validação textual; a mensagem não atribui
+a falha à rejeição de prefixos artificiais.
+
+Mensagem final preservada em `falhas_saida_extracao_local_qwen25-7b-tipado-prompt-v2-textual.json`:
+
+```text
+Falha ao extrair laudo_1.txt após 3 tentativas: 2 validation errors for LaudoExtraido
+matricula
+  Value error, valor é obrigatório quando status="presente" -- se a informação está incerta, use ausente ou conflitante em vez de presente com valor vazio. [type=value_error, input_value={'status': 'presente', 'v...14º CRI de São Paulo'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.13/v/value_error
+onus
+  Value error, valor é obrigatório quando status="presente" -- se a informação está incerta, use ausente ou conflitante em vez de presente com valor vazio. [type=value_error, input_value={'status': 'presente', 'v...a certidão analisada.'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.13/v/value_error
+```
+
+### Interpretação e limites
+
+A acurácia de status e a equivalência textual caíram, enquanto a acurácia
+de valor condicional subiu e a cobertura permaneceu em 16/17. A comparação
+de valor usa denominadores diferentes: 114/141 antes e 113/137 agora.
+Portanto, o percentual maior não significa mais valores corretos nem
+comprova melhoria geral do pipeline.
+
+É uma única execução de um gerador variável. O viés de ajuste do prompt
+continua presente, pois os mesmos 17 laudos orientaram o refinamento e a
+avaliação. Não é possível isolar o efeito causal da validação textual nem
+afirmar generalização para laudos novos a partir dessa comparação.
+
+Uma validação mais restritiva pode trocar saídas com defeitos por falhas
+explícitas e reduzir a cobertura. Nesta execução, a cobertura não caiu,
+e a falha registrada foi causada pela regra preexistente de valor
+obrigatório. As falhas históricas dos laudos 16 e 4 continuam com causa
+desconhecida; a evidência desta execução não permite reconstruí-las.
+
+### Artefatos da execução
+
+- [`saida_extracao_local_qwen25-7b-tipado-prompt-v2-textual.json`](saida_extracao_local_qwen25-7b-tipado-prompt-v2-textual.json)
+- [`relatorio_acuracia_qwen25-7b-tipado-prompt-v2-textual.md`](relatorio_acuracia_qwen25-7b-tipado-prompt-v2-textual.md)
+- [`falhas_saida_extracao_local_qwen25-7b-tipado-prompt-v2-textual.json`](falhas_saida_extracao_local_qwen25-7b-tipado-prompt-v2-textual.json)

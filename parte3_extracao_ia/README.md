@@ -12,14 +12,18 @@ privativa, área total, ano de construção, valor de avaliação, matrícula,
 | `schema.py` | Contrato de dados (Pydantic): cada campo possui `valor`, `status` (`presente`, `ausente` ou `conflitante`) e `trecho_bruto` de evidência. Áreas e valor são `float`, ano é `int` e data é `date` |
 | `normalizacao.py` | Parsers estritos de número, ano e data; limpeza de símbolos nas extremidades dos campos textuais e rejeição de prefixos artificiais |
 | `extrator.py` | Pipeline alternativo via API da Anthropic, com saída estruturada, validação e nova tentativa quando a resposta é inválida |
-| `extrator_local.py` | Pipeline utilizado na execução real da entrega, via modelos locais com Ollama |
+| `extrator_local.py` | Pipeline local com Ollama; grava a saída e um JSON versionável com os detalhes das falhas |
+| `falhas_*.json` | Artefatos gerados a cada execução: arquivo de origem e mensagem final de cada falha; lista vazia quando não há falhas |
 | `construir_gabarito.py` | Contém o gabarito de referência revisado e gera `gabarito.json` validando os registros pelo schema oficial |
 | `avaliador.py` | Compara a saída do extrator com `gabarito.json` e calcula acurácia por campo |
 | `gabarito.json` | Referência utilizada para avaliar as extrações |
 | `saida_extracao_local_qwen25-7b.json` | Resultado da execução dos 17 laudos com Qwen2.5 7B e schema antigo |
 | `relatorio_acuracia_qwen25-7b.md` | Avaliação por campo e divergências da execução com schema antigo |
-| `saida_extracao_local_qwen25-7b-tipado-prompt-v2.json` | Saída atual: schema tipado + prompt V2, com 16/17 laudos processados |
-| `relatorio_acuracia_qwen25-7b-tipado-prompt-v2-normalizado.md` | Avaliação atual: métrica conservadora e equivalência textual complementar de endereco e matricula |
+| `saida_extracao_local_qwen25-7b-tipado-prompt-v2.json` | Saída histórica: schema tipado + prompt V2, com 16/17 laudos processados |
+| `relatorio_acuracia_qwen25-7b-tipado-prompt-v2-normalizado.md` | Avaliação histórica do V2: métrica conservadora e equivalência textual complementar de endereco e matricula |
+| `saida_extracao_local_qwen25-7b-tipado-prompt-v2-textual.json` | Saída atual: schema tipado + prompt V2 + validação textual, com 16/17 laudos |
+| `relatorio_acuracia_qwen25-7b-tipado-prompt-v2-textual.md` | Relatório da execução atual, com métricas gerais, por campo e divergências |
+| `falhas_saida_extracao_local_qwen25-7b-tipado-prompt-v2-textual.json` | Mensagem final da falha do laudo_1.txt na execução atual |
 | `testes/test_avaliador.py` | Testes automatizados do avaliador e da normalização dos valores |
 | `testes/test_extrator_local.py` | Testes do extrator local com cliente Ollama simulado |
 | `testes/test_schema.py` | Testes das regras de validação do schema, incluindo regressão de erro encontrado durante a execução real |
@@ -60,6 +64,13 @@ python extrator_local.py \
   --modelo qwen2.5:7b-instruct
 ```
 
+Além da saída, o comando grava `falhas_saida_extracao_local.json` na mesma
+pasta. Cada falha contém `arquivo_origem` e `ultimo_erro`, com a mensagem
+final da exceção após o esgotamento das tentativas. Quando não há falhas,
+o arquivo recebe `[]`, substituindo registros de uma execução anterior.
+A saída parcial com os laudos válidos é preservada, e o processo retorna
+código `1` quando há falhas. O caminho do arquivo de falhas aparece no log.
+
 Também foi utilizado `qwen3:1.7b` durante o desenvolvimento para permitir
 a execução em hardware com menor quantidade de VRAM.
 
@@ -82,8 +93,8 @@ python -m pytest testes/ -v
 ```
 
 Os testes não exigem Ollama nem acesso à API da Anthropic, pois utilizam
-clientes simulados e dados sintéticos quando necessário. Após a inclusão da
-validação textual, passaram **107 testes da Parte 3** e **144 testes na suíte
+clientes simulados e dados sintéticos quando necessário. Após a inclusão do
+registro de falhas, passaram **112 testes da Parte 3** e **149 testes na suíte
 completa**.
 
 ## Pipeline alternativo — Anthropic
@@ -144,13 +155,14 @@ gabarito.
 |---|---:|---:|---:|
 | Schema antigo (`valor` sempre texto) | 92,9% (158/170) | 63,6% (91/143) | 17/17 |
 | Schema tipado | 84,7% | 77,3% (99/128) | 16/17 |
-| **Schema tipado + prompt V2 — resultado atual** | **90,6%** | **80,9% (114/141)** | **16/17** |
+| Schema tipado + prompt V2 | 90,6% | 80,9% (114/141) | 16/17 |
+| **Schema tipado + prompt V2 + validação textual — resultado atual** | **90,0%** | **82,5% (113/137)** | **16/17** |
 
-A acurácia de valor condicional evoluiu de **63,6% → 77,3% → 80,9%**.
+A acurácia de valor condicional evoluiu de **63,6% → 77,3% → 80,9% → 82,5%**.
 A execução intermediária com schema tipado está registrada em [`decisoes.md`](decisoes.md); sua saída não está versionada.
 Os resultados do schema antigo e do V2 possuem saída e relatório versionados.
 
-#### Resultado atual — schema tipado + prompt V2
+#### Resultado atual — schema tipado + prompt V2 + validação textual
 
 | Campo | Status | Valor condicional — métrica conservadora |
 |---|---:|---:|
@@ -160,12 +172,18 @@ Os resultados do schema antigo e do V2 possuem saída e relatório versionados.
 | `area_total_m2` | 94,1% | 100,0% |
 | `ano_construcao` | 88,2% | 100,0% |
 | `valor_avaliacao_reais` | 94,1% | 100,0% |
-| `matricula` | 94,1% | 33,3% |
-| `onus` | 76,5% | 50,0% |
+| `matricula` | 94,1% | 40,0% |
+| `onus` | 70,6% | 66,7% |
 | `data_vistoria` | 94,1% | 100,0% |
 | `responsavel_tecnico` | 94,1% | 100,0% |
 
 Os artefatos do resultado atual estão disponíveis em:
+
+- [`saida_extracao_local_qwen25-7b-tipado-prompt-v2-textual.json`](saida_extracao_local_qwen25-7b-tipado-prompt-v2-textual.json)
+- [`relatorio_acuracia_qwen25-7b-tipado-prompt-v2-textual.md`](relatorio_acuracia_qwen25-7b-tipado-prompt-v2-textual.md)
+- [`falhas_saida_extracao_local_qwen25-7b-tipado-prompt-v2-textual.json`](falhas_saida_extracao_local_qwen25-7b-tipado-prompt-v2-textual.json)
+
+Artefatos da execução V2 anterior:
 
 - [`saida_extracao_local_qwen25-7b-tipado-prompt-v2.json`](saida_extracao_local_qwen25-7b-tipado-prompt-v2.json)
 - [`relatorio_acuracia_qwen25-7b-tipado-prompt-v2-normalizado.md`](relatorio_acuracia_qwen25-7b-tipado-prompt-v2-normalizado.md)
@@ -181,17 +199,29 @@ O status correto não garante um valor correto. Por isso, o avaliador reporta
 as duas métricas lado a lado e mantém as divergências disponíveis para auditoria.
 
 A métrica principal de valor permanece **conservadora** e considera os campos
-em que gabarito e extração indicam `presente`. Portanto, os **80,9% (114/141)**
+em que gabarito e extração indicam `presente`. Portanto, os **82,5% (113/137)**
 são uma acurácia condicional, que deve ser lida junto dos **16/17 laudos processados**.
 
 A equivalência textual normalizada de `endereco` + `matricula` é de
-**76,7% (23/30)**. Essa métrica é complementar, cobre apenas esses dois campos
+**70,0% (21/30)**. Essa métrica é complementar, cobre apenas esses dois campos
 e não substitui a métrica conservadora nem é diretamente comparável ao resultado
 geral, pois utiliza outro conjunto de campos e outro denominador.
 
 O extrator ainda requer **revisão humana**, principalmente nos campos textuais:
-`endereco` apresenta **26,7%**, `matricula` **33,3%** e `onus` **50,0%** de acurácia
+`endereco` apresenta **26,7%**, `matricula` **40,0%** e `onus` **66,7%** de acurácia
 de valor pela métrica conservadora.
+
+Nesta execução, o status caiu de **90,6% para 90,0%** e a equivalência
+textual de **76,7% (23/30) para 70,0% (21/30)**. O valor condicional subiu
+de **80,9% (114/141) para 82,5% (113/137)**, com mudança no denominador,
+e a cobertura permaneceu em **16/17**. É uma única execução de um gerador
+variável, nos mesmos laudos usados para ajustar o prompt; as diferenças
+não demonstram um efeito causal do validador nem generalização.
+
+A falha atual foi no `laudo_1.txt`: `matricula` e `onus` permaneceram com
+`status="presente"` e `valor=None` após as tentativas. A regra já existente
+de valor obrigatório rejeitou o registro; o log não atribui essa falha à
+nova rejeição de prefixos textuais.
 
 Boa parte dos erros de valor era de formato: números com texto em volta
 (`"Possui 61m²"`, `"strconv(285)"`, `".275.000,00"`). Isso levou ao
@@ -217,9 +247,9 @@ Essa regra trata padrões conhecidos, mas não garante correção semântica.
 O prefixo `The ` também pode ocorrer em nomes legítimos e é uma limitação
 explícita da regra. Consulte [`decisoes.md`](decisoes.md#validação-dos-campos-textuais-na-saída).
 
-O efeito no modelo real **ainda exige nova execução**. Os resultados
-históricos do V2 não incluem essa validação; suas saídas e relatórios foram
-preservados, assim como as métricas do avaliador.
+A validação textual foi executada contra o modelo real. Essa execução é
+o resultado atual descrito acima. As saídas e os relatórios anteriores
+foram preservados, assim como as métricas do avaliador.
 
 ## Limitações
 
@@ -238,10 +268,10 @@ A avaliação possui algumas limitações conhecidas:
   automaticamente para documentos fora da amostra;
 - o pipeline via Anthropic não foi comparado experimentalmente com os
   modelos locais;
-- a execução atual com schema tipado + prompt V2 processou 16/17 laudos;
-- a acurácia de valor condicional de 80,9% (114/141) não dispensa revisão
+- a execução atual com schema tipado + prompt V2 + validação textual processou 16/17 laudos;
+- a acurácia de valor condicional de 82,5% (113/137) não dispensa revisão
   humana, principalmente nos campos textuais: endereco 26,7%, matricula
-  33,3% e onus 50,0% na métrica conservadora.
+  40,0% e onus 66,7% na métrica conservadora.
 
 As decisões completas e os problemas encontrados durante o desenvolvimento
 estão documentados em [`decisoes.md`](decisoes.md).

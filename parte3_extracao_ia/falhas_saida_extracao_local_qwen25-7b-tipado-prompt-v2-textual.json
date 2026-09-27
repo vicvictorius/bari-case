@@ -1,0 +1,6 @@
+[
+  {
+    "arquivo_origem": "laudo_1.txt",
+    "ultimo_erro": "Falha ao extrair laudo_1.txt após 3 tentativas: 2 validation errors for LaudoExtraido\nmatricula\n  Value error, valor é obrigatório quando status=\"presente\" -- se a informação está incerta, use ausente ou conflitante em vez de presente com valor vazio. [type=value_error, input_value={'status': 'presente', 'v...14º CRI de São Paulo'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.13/v/value_error\nonus\n  Value error, valor é obrigatório quando status=\"presente\" -- se a informação está incerta, use ausente ou conflitante em vez de presente com valor vazio. [type=value_error, input_value={'status': 'presente', 'v...a certidão analisada.'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.13/v/value_error"
+  }
+]
